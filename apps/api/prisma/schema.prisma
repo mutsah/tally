@@ -1,0 +1,47 @@
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Database Shemas
+
+enum Role {
+  USER
+  ADMIN
+}
+
+
+
+model User {
+  id String @id @default(uuid())  
+  email String @unique
+  password String
+  firstName String?
+  lastName String?
+  role Role @default(USER)
+  refreshToken String? 
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+model ResetPassword {
+  id String @id @default(uuid())
+  email String @unique
+  token String @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("reset_password")
+}
+
+
+
