@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { MailModule } from './modules/mail/mail.module';
@@ -20,6 +21,7 @@ import { MailModule } from './modules/mail/mail.module';
     PrismaModule,
     AuthModule,
     AccountsModule,
+    CategoriesModule,
     MailModule,
   ],
   controllers: [AppController],

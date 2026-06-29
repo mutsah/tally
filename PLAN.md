@@ -11,12 +11,14 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 
 ## Status
 
-- **Phase:** 2 — Multi-tenancy + Accounts (in progress)
-- **Done:** Phases 0 and 1 complete — monorepo scaffolded, `apps/api` seeded from the boilerplate
-  and rebranded, refresh-token secret fix + conditional OAuth + logging cleanup, Postgres up,
-  migrations applied, auth verified end-to-end. Committed as `0f72e2c`.
-- **Next action:** **Phase 2** — establish the per-user scoping mechanism and build the Accounts
-  module (first tenant-scoped resource), then prove cross-user isolation.
+- **Phase:** 3 complete — Categories; **Phase 4 (Transactions + transfers) next**
+- **Done:** Phases 0–3 complete. Scaffold + auth (`0f72e2c`); Accounts module + `TenantScopedService`
+  per-user scoping (`42de542`); test-suite green-up (`c288b49`); Categories module with one-level
+  nesting and transactional 14-category seeding on signup (Phase 3 commit). One Phase 2 item
+  deferred: computed account `balance` (needs transactions/valuations) — folds into Phase 4/5.
+- **Next action:** **Phase 4** — `Transaction` model (incl. transfers as one row with
+  `toAccountId`), transactions module with filters/pagination, and the transfer/validation
+  invariants. Then revisit account balance computation.
 - **Last updated:** 2026-06-29
 
 ---
@@ -61,18 +63,18 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 - [x] Swagger loads at `/api/docs`
 
 ## Phase 2 — Multi-tenancy + Accounts
-- [ ] Establish the per-user scoping pattern (Prisma client extension or base service) so
+- [x] Establish the per-user scoping pattern (Prisma client extension or base service) so
       `userId` filtering is the DEFAULT, not something to remember
-- [ ] `Account` model (userId, name, type enum, archived) + migration
-- [ ] Accounts module: CRUD, all queries scoped to the current user
+- [x] `Account` model (userId, name, type enum, archived) + migration
+- [x] Accounts module: CRUD, all queries scoped to the current user
 - [ ] Computed `balance` (string): derived accounts from transaction flow, valued accounts from
-      latest valuation (stub until valuations exist)
-- [ ] **Isolation test:** two users cannot see or touch each other's accounts
+      latest valuation (stub until valuations exist) — deferred to Phase 4/5
+- [x] **Isolation test:** two users cannot see or touch each other's accounts
 
 ## Phase 3 — Categories
-- [ ] `Category` model (userId, name, kind enum, parentId — one level of nesting)
-- [ ] Categories module: CRUD, grouped listing, single-level-nesting enforced
-- [ ] Auto-seed starter categories on user signup (Expense + Income sets)
+- [x] `Category` model (userId, name, kind enum, parentId — one level of nesting)
+- [x] Categories module: CRUD, grouped listing, single-level-nesting enforced
+- [x] Auto-seed starter categories on user signup (Expense + Income sets)
 
 ## Phase 4 — Transactions + transfers
 - [ ] `Transaction` model (userId, kind, amount Decimal(18,2), date, note, accountId,

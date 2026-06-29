@@ -47,6 +47,20 @@ export abstract class TenantScopedService<TModel> {
     return row as TModel;
   }
 
+  /**
+   * Find one row matching an arbitrary filter, always scoped to the user.
+   * Returns null when there is no match (use for validation lookups where a
+   * miss is not a 404, e.g. checking a referenced parent or a sibling name).
+   */
+  protected findOneForUser(
+    userId: string,
+    where: Record<string, unknown>,
+  ): Promise<TModel | null> {
+    return this.delegate.findFirst({
+      where: { ...where, userId },
+    }) as Promise<TModel | null>;
+  }
+
   /** Create a row owned by the user (userId is injected, never client-supplied). */
   protected createForUser(
     userId: string,

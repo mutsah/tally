@@ -20,6 +20,7 @@ import { MailService } from '../mail/mail.service';
 import { VerifyTokenDto } from './dto/verify-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { OAuthUser } from './interfaces/oauth-user.interface';
+import { STARTER_CATEGORIES } from 'src/modules/categories/starter-categories';
 
 @Injectable()
 export class AuthService {
@@ -93,16 +94,31 @@ export class AuthService {
     try {
       const hashedPassword = await bcrypt.hash(password, this.SALT_ROUNDS);
 
-      const user = await this.prisma.user.create({
-        data: { email, password: hashedPassword, firstName, lastName },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          password: false,
-        },
+      // Create the user AND seed their starter categories in one transaction:
+      // if seeding fails, the user creation rolls back too (no user without
+      // categories, no partial seed).
+      const user = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({
+          data: { email, password: hashedPassword, firstName, lastName },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            password: false,
+          },
+        });
+
+        await tx.category.createMany({
+          data: STARTER_CATEGORIES.map((category) => ({
+            name: category.name,
+            kind: category.kind,
+            userId: created.id,
+          })),
+        });
+
+        return created;
       });
 
       const tokens = await this.generateTokens(user.id, user.email);
