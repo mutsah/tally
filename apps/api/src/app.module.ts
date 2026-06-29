@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { TransactionsModule } from './modules/transactions/transactions.module';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { MailModule } from './modules/mail/mail.module';
+import { DecimalToStringInterceptor } from './common/interceptors/decimal-to-string.interceptor';
 
 @Module({
   imports: [
@@ -22,9 +25,14 @@ import { MailModule } from './modules/mail/mail.module';
     AuthModule,
     AccountsModule,
     CategoriesModule,
+    TransactionsModule,
     MailModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Money-as-string: serialize every Prisma Decimal in responses as a string.
+    { provide: APP_INTERCEPTOR, useClass: DecimalToStringInterceptor },
+  ],
 })
 export class AppModule {}

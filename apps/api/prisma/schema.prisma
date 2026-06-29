@@ -27,6 +27,12 @@ enum CategoryKind {
   EXPENSE
 }
 
+enum TransactionKind {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
 
 
 model User {
@@ -38,8 +44,9 @@ model User {
   role Role @default(USER)
   refreshToken String?
 
-  accounts   Account[]
-  categories Category[]
+  accounts     Account[]
+  categories   Category[]
+  transactions Transaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -61,6 +68,8 @@ model Category {
   parent   Category?    @relation("CategoryChildren", fields: [parentId], references: [id], onDelete: SetNull)
   children Category[]   @relation("CategoryChildren")
 
+  transactions Transaction[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -77,12 +86,50 @@ model Account {
   type     AccountType
   archived Boolean     @default(false)
 
+  // Transactions where this account is the source / the transfer destination.
+  txFrom Transaction[] @relation("TxFrom")
+  txTo   Transaction[] @relation("TxTo")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([userId, name])
   @@index([userId])
   @@map("accounts")
+}
+
+model Transaction {
+  id     String          @id @default(uuid())
+  userId String
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind   TransactionKind
+  // Always POSITIVE. Direction is carried by `kind`, never by sign.
+  amount Decimal         @db.Decimal(18, 2)
+  date   DateTime
+  note   String?
+
+  // Source/owning account (required). For TRANSFER, `toAccountId` is the
+  // destination (added next step). Cascade keeps a user-delete clean; the
+  // account in-use guard (Phase 4) prevents casual loss of records.
+  accountId   String
+  account     Account  @relation("TxFrom", fields: [accountId], references: [id], onDelete: Cascade)
+  toAccountId String?
+  toAccount   Account? @relation("TxTo", fields: [toAccountId], references: [id], onDelete: Cascade)
+
+  // Category (null for transfers). SetNull keeps the financial record if a
+  // category is ever removed.
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, date])
+  @@index([accountId])
+  @@index([toAccountId])
+  @@index([categoryId])
+  @@map("transactions")
 }
 
 model ResetPassword {

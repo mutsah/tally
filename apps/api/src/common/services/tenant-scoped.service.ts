@@ -12,6 +12,7 @@ export interface TenantDelegate {
   create(args: unknown): Promise<unknown>;
   updateMany(args: unknown): Promise<{ count: number }>;
   deleteMany(args: unknown): Promise<{ count: number }>;
+  count(args: unknown): Promise<number>;
 }
 
 /**
@@ -27,15 +28,28 @@ export abstract class TenantScopedService<TModel> {
   /** Human-readable name used in NotFound messages, e.g. "Account". */
   protected abstract readonly entityName: string;
 
-  /** List rows owned by the user, optionally with extra filters/ordering. */
+  /** List rows owned by the user, optionally with extra filters/ordering/paging. */
   protected listForUser(
     userId: string,
-    args: { where?: Record<string, unknown>; orderBy?: unknown } = {},
+    args: {
+      where?: Record<string, unknown>;
+      orderBy?: unknown;
+      skip?: number;
+      take?: number;
+    } = {},
   ): Promise<TModel[]> {
     return this.delegate.findMany({
       ...args,
       where: { ...(args.where ?? {}), userId },
     }) as Promise<TModel[]>;
+  }
+
+  /** Count rows matching a filter, scoped to the user (for pagination totals). */
+  protected countForUser(
+    userId: string,
+    where: Record<string, unknown> = {},
+  ): Promise<number> {
+    return this.delegate.count({ where: { ...where, userId } });
   }
 
   /** Fetch one row by id, scoped to the user. 404s if it isn't theirs. */
