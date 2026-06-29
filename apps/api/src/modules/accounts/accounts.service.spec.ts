@@ -13,10 +13,15 @@ describe('AccountsService — tenant isolation', () => {
 
   let store: Array<Record<string, unknown>>;
   let service: AccountsService;
-  let prismaMock: { account: Record<string, jest.Mock> };
+  let prismaMock: {
+    account: Record<string, jest.Mock>;
+    transaction: Record<string, jest.Mock>;
+  };
 
-  const matches = (row: Record<string, unknown>, where: Record<string, unknown>) =>
-    Object.entries(where).every(([k, v]) => row[k] === v);
+  const matches = (
+    row: Record<string, unknown>,
+    where: Record<string, unknown>,
+  ) => Object.entries(where).every(([k, v]) => row[k] === v);
 
   beforeEach(() => {
     store = [
@@ -53,6 +58,8 @@ describe('AccountsService — tenant isolation', () => {
           return Promise.resolve({ count: before - store.length });
         }),
       },
+      // No transactions in the isolation tests → balances compute to "0.00".
+      transaction: { groupBy: jest.fn().mockResolvedValue([]) },
     };
 
     service = new AccountsService(prismaMock as never);

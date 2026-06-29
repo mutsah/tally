@@ -11,16 +11,16 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 
 ## Status
 
-- **Phase:** 4 essentially complete — Transactions incl. transfers; **account balance
-  computation next** (the one remaining Phase 4 item)
-- **Done:** Phases 0–3 complete plus Phase 4 transactions. Scaffold + auth (`0f72e2c`); Accounts +
-  `TenantScopedService` scoping (`42de542`); test green-up (`c288b49`); Categories + transactional
-  seeding (`5012a92`); Transactions income/expense CRUD + money-as-string interceptor (`faa4899`);
-  single-row transfers with unified validation (this commit). Deferred: account `balance`
-  computation (needs transactions/valuations) and the accounts in-use delete guard.
-- **Next action:** **account balance computation** — derived accounts from transaction flow
-  (a transfer read once on each side, never counted as spend/income), valued accounts from the
-  latest valuation (stub until Phase 5). Then Phase 5 (valuations).
+- **Phase:** 4 complete — Transactions, transfers, and derived balances; **Phase 5 (Valuations)
+  next**
+- **Done:** Phases 0–4 complete. Scaffold + auth (`0f72e2c`); Accounts + `TenantScopedService`
+  scoping (`42de542`); test green-up (`c288b49`); Categories + transactional seeding (`5012a92`);
+  Transactions income/expense CRUD + money-as-string interceptor (`faa4899`); single-row transfers
+  (`0640a34`); derived account balances from transaction flow (this commit). Deferred to Phase 8:
+  the accounts in-use delete guard.
+- **Next action:** **Phase 5 — Valuations.** `AccountValuation` model + module; latest snapshot
+  drives valued-account balance (replacing the current "0.00" placeholder); microloan monthly
+  snapshot flow (principal as balance, interest recorded as income).
 - **Last updated:** 2026-06-29
 
 ---
@@ -69,8 +69,8 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
       `userId` filtering is the DEFAULT, not something to remember
 - [x] `Account` model (userId, name, type enum, archived) + migration
 - [x] Accounts module: CRUD, all queries scoped to the current user
-- [ ] Computed `balance` (string): derived accounts from transaction flow, valued accounts from
-      latest valuation (stub until valuations exist) — deferred to Phase 4/5
+- [x] Computed `balance` (string): derived accounts from transaction flow (2 grouped aggregates,
+      decimal-safe); valued accounts return "0.00" placeholder until Phase 5 valuations
 - [x] **Isolation test:** two users cannot see or touch each other's accounts
 
 ## Phase 3 — Categories
@@ -88,8 +88,11 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 - [x] Transfer support: single `Transaction` row with `toAccountId`, no category, source ≠ dest,
       both accounts owned; unified validateRelations path; accountId filter matches both sides;
       kind-change rejected; proven excluded from spend/income
-- [ ] Balances reconcile; a transfer touches both accounts and is never counted as spend
-      (deferred to the Accounts-balance work)
+- [x] Balances reconcile; a transfer touches both accounts (source −, destination +) and is
+      never counted as spend/income
+
+> Phase 4 is complete except the **accounts in-use delete guard** (block deleting an account that
+> has transactions — currently cascades; tracked below in Phase 8).
 
 ## Phase 5 — Valuations
 - [ ] `AccountValuation` model (userId, accountId, value, asOf, unique[accountId, asOf])
@@ -115,6 +118,8 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
       success from send-reset-link regardless)
 - [ ] Rebrand leftover "Mutsah" mail branding to Tally (mail.service sender name + template)
 - [ ] Remove redundant email index on `User` (`@@index([email])` duplicates the `@unique`)
+- [ ] Accounts in-use delete guard: block deleting an account that has transactions (currently the
+      FK cascades and would delete its transactions); `TODO(transactions)` in accounts.service
 - [ ] (Optional) Postgres row-level security as a second isolation layer
 
 ## Phase 9 — Frontend (`apps/web`)

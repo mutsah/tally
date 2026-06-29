@@ -18,7 +18,7 @@ import {
 import { Account } from '@prisma/client';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { GetUser } from 'src/common/decorators/get-user.decorator';
-import { AccountsService } from './accounts.service';
+import { AccountsService, AccountWithBalance } from './accounts.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 
@@ -39,20 +39,24 @@ export class AccountsController {
   }
 
   @Get()
-  @ApiOperation({ summary: "List the current user's accounts" })
-  findAll(@GetUser('id') userId: string): Promise<Account[]> {
+  @ApiOperation({
+    summary: "List the current user's accounts (with computed balance)",
+  })
+  findAll(@GetUser('id') userId: string): Promise<AccountWithBalance[]> {
     return this.accountsService.findAll(userId);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get one of the current user’s accounts' })
+  @ApiOperation({
+    summary: 'Get one of the current user’s accounts (with computed balance)',
+  })
   @ApiNotFoundResponse({
     description: 'Account not found or not owned by user',
   })
   findOne(
     @GetUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<Account> {
+  ): Promise<AccountWithBalance> {
     return this.accountsService.findOne(userId, id);
   }
 
