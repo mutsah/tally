@@ -15,22 +15,47 @@ enum Role {
   ADMIN
 }
 
+enum AccountType {
+  CASH
+  BANK
+  INVESTMENT
+  MICROLOANS
+}
+
 
 
 model User {
-  id String @id @default(uuid())  
+  id String @id @default(uuid())
   email String @unique
   password String
   firstName String?
   lastName String?
   role Role @default(USER)
-  refreshToken String? 
+  refreshToken String?
+
+  accounts Account[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([email])
   @@map("users")
+}
+
+model Account {
+  id       String      @id @default(uuid())
+  userId   String
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name     String
+  type     AccountType
+  archived Boolean     @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("accounts")
 }
 
 model ResetPassword {

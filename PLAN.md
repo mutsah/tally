@@ -11,9 +11,12 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 
 ## Status
 
-- **Phase:** 0 — Project setup & governance
-- **Done:** monorepo + npm-workspaces decided; `.claude/` governance and this plan created.
-- **Next action:** **Step 2** — seed `apps/api` from the auth boilerplate and get a clean build.
+- **Phase:** 2 — Multi-tenancy + Accounts (in progress)
+- **Done:** Phases 0 and 1 complete — monorepo scaffolded, `apps/api` seeded from the boilerplate
+  and rebranded, refresh-token secret fix + conditional OAuth + logging cleanup, Postgres up,
+  migrations applied, auth verified end-to-end. Committed as `0f72e2c`.
+- **Next action:** **Phase 2** — establish the per-user scoping mechanism and build the Accounts
+  module (first tenant-scoped resource), then prove cross-user isolation.
 - **Last updated:** 2026-06-29
 
 ---
@@ -38,24 +41,24 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 - [x] Decide monorepo + npm workspaces
 - [x] Create `.claude/` governance (settings, code-style, governance protocol)
 - [x] Create this PLAN.md
-- [ ] Create root `CLAUDE.md` in the repo (from the provided file)
-- [ ] Confirm Claude Code reads `.claude/` + CLAUDE.md (open the project, ask it to summarise the rules)
+- [x] Create root `CLAUDE.md` in the repo (from the provided file)
+- [x] Confirm Claude Code reads `.claude/` + CLAUDE.md (open the project, ask it to summarise the rules)
 
 ## Phase 1 — Backend foundation
 **Step 2 — seed & build**
-- [ ] Scaffold npm-workspaces monorepo root (root package.json, .gitignore, README, `apps/`)
-- [ ] Copy boilerplate into `apps/api` (exclude .git, node_modules, dist, .env)
-- [ ] Rebrand to Tally (package name, Swagger title) — no logic changes
-- [ ] Add `.env.example`; create local `.env` (two different JWT secrets)
-- [ ] `npm install` → `prisma generate` → `npm run build -w apps/api` all succeed
-- [ ] Report build result (Node/npm versions, any bcrypt/Prisma errors)
+- [x] Scaffold npm-workspaces monorepo root (root package.json, .gitignore, README, `apps/`)
+- [x] Copy boilerplate into `apps/api` (exclude .git, node_modules, dist, .env)
+- [x] Rebrand to Tally (package name, Swagger title) — no logic changes
+- [x] Add `.env.example`; create local `.env` (two different JWT secrets)
+- [x] `npm install` → `prisma generate` → `npm run build -w apps/api` all succeed
+- [x] Report build result (Node/npm versions, any bcrypt/Prisma errors)
 
 **Step 3 — auth working end-to-end**
-- [ ] Fix refresh-token secret bug (sign refresh token with `JWT_REFRESH_SECRET`)
-- [ ] Remove leftover `console.log` debug lines; standardise on Nest `Logger`
-- [ ] Start local Postgres (Docker), run migrations, boot the app
-- [ ] Verify: register → login → guarded route with access token → refresh returns new tokens
-- [ ] Swagger loads at `/api/docs`
+- [x] Fix refresh-token secret bug (sign refresh token with `JWT_REFRESH_SECRET`)
+- [x] Remove leftover `console.log` debug lines; standardise on Nest `Logger`
+- [x] Start local Postgres (Docker), run migrations, boot the app
+- [x] Verify: register → login → guarded route with access token → refresh returns new tokens
+- [x] Swagger loads at `/api/docs`
 
 ## Phase 2 — Multi-tenancy + Accounts
 - [ ] Establish the per-user scoping pattern (Prisma client extension or base service) so
@@ -99,6 +102,12 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 - [ ] Env-var validation on boot (ConfigModule schema)
 - [ ] Consistent error envelope + global exception filter
 - [ ] Money-as-string serialization applied everywhere Decimal leaves the API
+- [ ] Password-reset email enumeration — don't reveal if an email exists (return a generic
+      success from send-reset-link regardless)
+- [ ] Rebrand leftover "Mutsah" mail branding to Tally (mail.service sender name + template)
+- [ ] Remove redundant email index on `User` (`@@index([email])` duplicates the `@unique`)
+- [ ] Fix or remove the broken boilerplate test stubs (`mail`/`auth` specs construct testing
+      modules without provider mocks, so they fail under jest)
 - [ ] (Optional) Postgres row-level security as a second isolation layer
 
 ## Phase 9 — Frontend (`apps/web`)
