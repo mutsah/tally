@@ -8,9 +8,12 @@ import {
   MaxLength,
 } from 'class-validator';
 
-// Edit an income/expense transaction. `kind` and `toAccountId` are intentionally
-// omitted; the global ValidationPipe (forbidNonWhitelisted) rejects any field not
-// listed here, so kind/userId/id cannot be changed through this endpoint.
+// Edit a transaction (income/expense or transfer). `kind` is intentionally
+// omitted — the global ValidationPipe (forbidNonWhitelisted) rejects any field
+// not listed here, so kind/userId/id cannot be changed; to change kind, delete
+// and recreate. The resulting record is re-validated against its (unchanged)
+// kind, so a transfer can't gain a category and income/expense can't gain a
+// toAccountId.
 export class UpdateTransactionDto {
   @ApiPropertyOptional({
     description: 'Positive amount as a string, up to 2 decimal places',
@@ -37,12 +40,22 @@ export class UpdateTransactionDto {
   accountId?: string;
 
   @ApiPropertyOptional({
-    description: 'Category id — must be owned by you and match the kind',
+    description:
+      'Category id (INCOME/EXPENSE only) — owned, matching kind. Not allowed on a transfer.',
     format: 'uuid',
   })
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Destination account id (TRANSFER only) — owned, different from accountId. Not allowed on income/expense.',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID()
+  toAccountId?: string;
 
   @ApiPropertyOptional({
     description: 'Free-text note. Send null to clear it.',

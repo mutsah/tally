@@ -12,7 +12,8 @@ import {
 
 export class CreateTransactionDto {
   @ApiProperty({
-    description: 'INCOME or EXPENSE. TRANSFER is not supported yet.',
+    description:
+      'INCOME, EXPENSE, or TRANSFER. INCOME/EXPENSE require categoryId and forbid toAccountId; TRANSFER requires toAccountId and forbids categoryId.',
     enum: TransactionKind,
     example: TransactionKind.EXPENSE,
   })
@@ -44,12 +45,23 @@ export class CreateTransactionDto {
   @IsUUID()
   accountId: string;
 
-  @ApiProperty({
-    description: 'Category id — must be owned by you and match the kind',
+  @ApiPropertyOptional({
+    description:
+      'Category id. Required for INCOME/EXPENSE (owned, matching kind); must be omitted for TRANSFER.',
     format: 'uuid',
   })
+  @IsOptional()
   @IsUUID()
-  categoryId: string;
+  categoryId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Destination account id. Required for TRANSFER (owned, different from accountId); must be omitted for INCOME/EXPENSE.',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID()
+  toAccountId?: string;
 
   @ApiPropertyOptional({
     description: 'Optional free-text note',

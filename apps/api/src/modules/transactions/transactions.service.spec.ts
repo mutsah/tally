@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  NotFoundException,
-  NotImplementedException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TransactionsService } from './transactions.service';
 
@@ -29,8 +25,13 @@ describe('TransactionsService', () => {
   const matchesWhere = (
     row: Record<string, unknown>,
     where: Record<string, unknown> = {},
-  ) =>
+  ): boolean =>
     Object.entries(where).every(([k, v]) => {
+      if (k === 'OR' && Array.isArray(v)) {
+        return v.some((sub) =>
+          matchesWhere(row, sub as Record<string, unknown>),
+        );
+      }
       if (k === 'date' && v && typeof v === 'object') {
         const range = v as { gte?: Date; lte?: Date };
         const rowDate = row.date as Date;
@@ -53,6 +54,7 @@ describe('TransactionsService', () => {
       { id: 'acc-a', userId: A },
       { id: 'acc-a2', userId: A },
       { id: 'acc-b', userId: B },
+      { id: 'acc-b2', userId: B },
     ];
     categories = [
       { id: 'cat-exp-a', userId: A, kind: 'EXPENSE' },
@@ -108,7 +110,7 @@ describe('TransactionsService', () => {
           Promise.resolve(txStore.find((r) => matchesWhere(r, where)) ?? null),
         ),
         create: jest.fn(({ data }) => {
-          const row = { id: 'new-id', ...data };
+          const row = { id: `new-${txStore.length + 1}`, ...data };
           txStore.push(row);
           return Promise.resolve(row);
         }),
@@ -204,12 +206,6 @@ describe('TransactionsService', () => {
   });
 
   describe('validation', () => {
-    it('rejects TRANSFER kind for now', async () => {
-      await expect(
-        service.create(A, { ...validExpense, kind: 'TRANSFER' as never }),
-      ).rejects.toBeInstanceOf(NotImplementedException);
-    });
-
     it('rejects amount <= 0, negative, or > 2 decimals', async () => {
       await expect(
         service.create(A, { ...validExpense, amount: '0' }),
@@ -285,6 +281,114 @@ describe('TransactionsService', () => {
         to: '2026-06-15T00:00:00.000Z',
       });
       expect(res.data.map((t) => t.id)).toEqual(['tx-a1']);
+    });
+  });
+
+  describe('transfers (single-row model)', () => {
+    const validTransfer = {
+      kind: 'TRANSFER' as never,
+      amount: '200.00',
+      date: '2026-06-15T00:00:00.000Z',
+      accountId: 'acc-a',
+      toAccountId: 'acc-a2',
+    };
+
+    it('creates exactly ONE row with both accounts, no category, Decimal amount', async () => {
+      const before = txStore.length;
+      const res = await service.create(A, validTransfer);
+      expect(prismaMock.transaction.create).toHaveBeenCalledTimes(1);
+      expect(txStore.length).toBe(before + 1); // one row, not two
+      expect(res).toMatchObject({
+        kind: 'TRANSFER',
+        accountId: 'acc-a',
+        toAccountId: 'acc-a2',
+        categoryId: null,
+        userId: A,
+      });
+      expect(res.amount).toBeInstanceOf(Prisma.Decimal);
+    });
+
+    it('rejects a transfer without a destination', async () => {
+      await expect(
+        service.create(A, { ...validTransfer, toAccountId: undefined }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects a transfer that carries a category', async () => {
+      await expect(
+        service.create(A, {
+          ...validTransfer,
+          categoryId: 'cat-exp-a',
+        } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects a transfer whose source equals its destination', async () => {
+      await expect(
+        service.create(A, { ...validTransfer, toAccountId: 'acc-a' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("rejects a transfer into an account that isn't the caller's", async () => {
+      await expect(
+        service.create(A, { ...validTransfer, toAccountId: 'acc-b' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects income/expense that carries a toAccountId (mirror case)', async () => {
+      await expect(
+        service.create(A, { ...validExpense, toAccountId: 'acc-a2' } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("isolation: A cannot read/update/delete B's transfer → 404", async () => {
+      const bTransfer = await service.create(B, {
+        kind: 'TRANSFER' as never,
+        amount: '5.00',
+        date: '2026-06-02T00:00:00.000Z',
+        accountId: 'acc-b',
+        toAccountId: 'acc-b2',
+      });
+      await expect(service.findOne(A, bTransfer.id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      await expect(
+        service.update(A, bTransfer.id, { amount: '6.00' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.remove(A, bTransfer.id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('appears when filtering by EITHER the source or destination account', async () => {
+      const transfer = await service.create(A, validTransfer);
+      const bySource = await service.findAll(A, { accountId: 'acc-a' });
+      const byDest = await service.findAll(A, { accountId: 'acc-a2' });
+      expect(bySource.data.map((t) => t.id)).toContain(transfer.id);
+      expect(byDest.data.map((t) => t.id)).toContain(transfer.id);
+    });
+
+    it('is movement, not spend/income: excluded from EXPENSE and INCOME subsets', async () => {
+      const transfer = await service.create(A, validTransfer);
+      await service.create(A, {
+        kind: 'INCOME' as never,
+        amount: '300.00',
+        date: '2026-06-12T00:00:00.000Z',
+        accountId: 'acc-a',
+        categoryId: 'cat-inc-a',
+      });
+
+      const all = (await service.findAll(A, { pageSize: 100 })).data;
+      const expenseIds = all
+        .filter((t) => t.kind === 'EXPENSE')
+        .map((t) => t.id);
+      const incomeIds = all.filter((t) => t.kind === 'INCOME').map((t) => t.id);
+
+      // The future dashboard sums by kind — the transfer must never appear in
+      // either spend or income.
+      expect(expenseIds).not.toContain(transfer.id);
+      expect(incomeIds).not.toContain(transfer.id);
+      expect(all.find((t) => t.id === transfer.id)?.kind).toBe('TRANSFER');
     });
   });
 });

@@ -11,15 +11,16 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 
 ## Status
 
-- **Phase:** 4 in progress — Transactions; income/expense done, **transfers next**
-- **Done:** Phases 0–3 complete plus Phase 4 part 1. Scaffold + auth (`0f72e2c`); Accounts +
+- **Phase:** 4 essentially complete — Transactions incl. transfers; **account balance
+  computation next** (the one remaining Phase 4 item)
+- **Done:** Phases 0–3 complete plus Phase 4 transactions. Scaffold + auth (`0f72e2c`); Accounts +
   `TenantScopedService` scoping (`42de542`); test green-up (`c288b49`); Categories + transactional
-  seeding (`5012a92`); Transactions income/expense CRUD with pagination/filters and the global
-  money-as-string interceptor (Phase 4 part-1 commit). Deferred: account `balance` computation
-  (needs transactions/valuations) and the accounts in-use delete guard.
-- **Next action:** **Phase 4 part 2** — transfers as a single `Transaction` row with `toAccountId`
-  (no category, source ≠ dest, never counted as spend), then balances reconcile. Then Phase 5
-  (valuations).
+  seeding (`5012a92`); Transactions income/expense CRUD + money-as-string interceptor (`faa4899`);
+  single-row transfers with unified validation (this commit). Deferred: account `balance`
+  computation (needs transactions/valuations) and the accounts in-use delete guard.
+- **Next action:** **account balance computation** — derived accounts from transaction flow
+  (a transfer read once on each side, never counted as spend/income), valued accounts from the
+  latest valuation (stub until Phase 5). Then Phase 5 (valuations).
 - **Last updated:** 2026-06-29
 
 ---
@@ -83,9 +84,12 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 - [x] Transactions module: CRUD with filters (account, category, date) + pagination
 - [x] Money-as-string serialization mechanism (global Decimal→string interceptor)
 - [x] Income/expense validation invariants (amount > 0 & ≤2dp; matching-kind owned category;
-      no toAccountId; TRANSFER rejected for now)
-- [ ] Transfer support: single `Transaction` row with `toAccountId`, no category, source ≠ dest
+      no toAccountId)
+- [x] Transfer support: single `Transaction` row with `toAccountId`, no category, source ≠ dest,
+      both accounts owned; unified validateRelations path; accountId filter matches both sides;
+      kind-change rejected; proven excluded from spend/income
 - [ ] Balances reconcile; a transfer touches both accounts and is never counted as spend
+      (deferred to the Accounts-balance work)
 
 ## Phase 5 — Valuations
 - [ ] `AccountValuation` model (userId, accountId, value, asOf, unique[accountId, asOf])

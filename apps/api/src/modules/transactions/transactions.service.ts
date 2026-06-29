@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotImplementedException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, Transaction, TransactionKind } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
@@ -18,6 +14,12 @@ export interface PaginatedTransactions {
   page: number;
   pageSize: number;
   total: number;
+}
+
+/** Normalized relational fields after invariant validation. */
+interface ResolvedRelations {
+  toAccountId: string | null;
+  categoryId: string | null;
 }
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -39,15 +41,14 @@ export class TransactionsService extends TenantScopedService<Transaction> {
     userId: string,
     dto: CreateTransactionDto,
   ): Promise<Transaction> {
-    if (dto.kind === TransactionKind.TRANSFER) {
-      throw new NotImplementedException(
-        'Transfers are not supported yet — coming in the next step',
-      );
-    }
-
     const amount = this.parseAmount(dto.amount);
-    await this.assertAccountOwned(userId, dto.accountId);
-    await this.assertCategoryMatchesKind(userId, dto.categoryId, dto.kind);
+    const relations = await this.validateRelations(
+      userId,
+      dto.kind,
+      dto.accountId,
+      dto.toAccountId ?? null,
+      dto.categoryId ?? null,
+    );
 
     return this.createForUser(userId, {
       kind: dto.kind,
@@ -55,8 +56,8 @@ export class TransactionsService extends TenantScopedService<Transaction> {
       date: new Date(dto.date),
       note: dto.note ?? null,
       accountId: dto.accountId,
-      toAccountId: null, // income/expense never have a destination account
-      categoryId: dto.categoryId,
+      toAccountId: relations.toAccountId,
+      categoryId: relations.categoryId,
     });
   }
 
@@ -105,17 +106,43 @@ export class TransactionsService extends TenantScopedService<Transaction> {
     if (dto.note !== undefined) {
       data.note = dto.note; // null clears the note
     }
-    if (dto.accountId !== undefined) {
-      await this.assertAccountOwned(userId, dto.accountId);
-      data.accountId = dto.accountId;
-    }
-    if (dto.categoryId !== undefined) {
-      await this.assertCategoryMatchesKind(
+
+    // If any relational field is touched, re-validate the WHOLE record against
+    // its (immutable) kind so it stays valid — a transfer can't gain a category
+    // or drop its destination, income/expense can't gain a destination, etc.
+    const relationsTouched =
+      dto.accountId !== undefined ||
+      dto.toAccountId !== undefined ||
+      dto.categoryId !== undefined;
+
+    if (relationsTouched) {
+      const accountId = dto.accountId ?? current.accountId;
+      const toAccountId =
+        dto.toAccountId !== undefined
+          ? (dto.toAccountId ?? null)
+          : current.toAccountId;
+      const categoryId =
+        dto.categoryId !== undefined
+          ? (dto.categoryId ?? null)
+          : current.categoryId;
+
+      const relations = await this.validateRelations(
         userId,
-        dto.categoryId,
         current.kind,
+        accountId,
+        toAccountId,
+        categoryId,
       );
-      data.categoryId = dto.categoryId;
+
+      if (dto.accountId !== undefined) {
+        data.accountId = accountId;
+      }
+      if (dto.toAccountId !== undefined) {
+        data.toAccountId = relations.toAccountId;
+      }
+      if (dto.categoryId !== undefined) {
+        data.categoryId = relations.categoryId;
+      }
     }
 
     if (Object.keys(data).length === 0) {
@@ -134,7 +161,12 @@ export class TransactionsService extends TenantScopedService<Transaction> {
   ): Record<string, unknown> {
     const where: Record<string, unknown> = {};
     if (query.accountId) {
-      where.accountId = query.accountId;
+      // A transfer touches two accounts, so it must surface when filtering by
+      // EITHER its source or its destination account.
+      where.OR = [
+        { accountId: query.accountId },
+        { toAccountId: query.accountId },
+      ];
     }
     if (query.categoryId) {
       where.categoryId = query.categoryId;
@@ -150,6 +182,55 @@ export class TransactionsService extends TenantScopedService<Transaction> {
       where.date = range;
     }
     return where;
+  }
+
+  /**
+   * The single cross-field validation path for every kind. Returns the
+   * normalized (toAccountId, categoryId) to persist so an invalid mix can't be
+   * stored:
+   *   INCOME/EXPENSE → categoryId required (owned, matching kind), toAccountId null.
+   *   TRANSFER       → toAccountId required (owned, ≠ source), categoryId null.
+   */
+  private async validateRelations(
+    userId: string,
+    kind: TransactionKind,
+    accountId: string,
+    toAccountId: string | null,
+    categoryId: string | null,
+  ): Promise<ResolvedRelations> {
+    await this.assertAccountOwned(userId, accountId, 'accountId');
+
+    if (kind === TransactionKind.TRANSFER) {
+      if (!toAccountId) {
+        throw new BadRequestException(
+          'A transfer requires a destination account (toAccountId)',
+        );
+      }
+      if (categoryId) {
+        throw new BadRequestException('A transfer cannot have a category');
+      }
+      if (toAccountId === accountId) {
+        throw new BadRequestException(
+          'A transfer source and destination must be different accounts',
+        );
+      }
+      await this.assertAccountOwned(userId, toAccountId, 'toAccountId');
+      return { toAccountId, categoryId: null };
+    }
+
+    // INCOME or EXPENSE
+    if (toAccountId) {
+      throw new BadRequestException(
+        'An income/expense transaction cannot have a destination account (toAccountId)',
+      );
+    }
+    if (!categoryId) {
+      throw new BadRequestException(
+        `A ${kind} transaction requires a category`,
+      );
+    }
+    await this.assertCategoryMatchesKind(userId, categoryId, kind);
+    return { toAccountId: null, categoryId };
   }
 
   /** Parse + validate a money string into a positive, ≤2dp Decimal (no floats). */
@@ -174,6 +255,7 @@ export class TransactionsService extends TenantScopedService<Transaction> {
   private async assertAccountOwned(
     userId: string,
     accountId: string,
+    field: 'accountId' | 'toAccountId',
   ): Promise<void> {
     const account = await this.prisma.account.findFirst({
       where: { id: accountId, userId },
@@ -181,7 +263,7 @@ export class TransactionsService extends TenantScopedService<Transaction> {
     });
     if (!account) {
       throw new BadRequestException(
-        'accountId does not reference one of your accounts',
+        `${field} does not reference one of your accounts`,
       );
     }
   }
