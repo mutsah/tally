@@ -106,8 +106,6 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
       success from send-reset-link regardless)
 - [ ] Rebrand leftover "Mutsah" mail branding to Tally (mail.service sender name + template)
 - [ ] Remove redundant email index on `User` (`@@index([email])` duplicates the `@unique`)
-- [ ] Fix or remove the broken boilerplate test stubs (`mail`/`auth` specs construct testing
-      modules without provider mocks, so they fail under jest)
 - [ ] (Optional) Postgres row-level security as a second isolation layer
 
 ## Phase 9 — Frontend (`apps/web`)
