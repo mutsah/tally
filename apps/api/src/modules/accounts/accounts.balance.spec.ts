@@ -3,9 +3,9 @@ import { AccountsService } from './accounts.service';
 
 // Balance computation: derived accounts (CASH/BANK) sum transaction flow with
 // transfers read once on each side; valued accounts (INVESTMENT/MICROLOANS)
-// ignore transactions and return the "0.00" placeholder. Decimal-safe, string
-// out. The prisma.transaction.groupBy mock computes real grouped sums over a
-// seeded, userId-scoped transaction list.
+// ignore transactions and take the LATEST valuation snapshot by asOf ("0.00"
+// only when none exists). Decimal-safe, string out. The transaction.groupBy and
+// accountValuation.findMany mocks compute real, userId-scoped results.
 describe('AccountsService — balance computation', () => {
   const A = 'user-a';
   const B = 'user-b';
@@ -13,6 +13,7 @@ describe('AccountsService — balance computation', () => {
 
   let accounts: Array<Record<string, unknown>>;
   let txns: Array<Record<string, unknown>>;
+  let valuations: Array<Record<string, unknown>>;
   let service: AccountsService;
 
   beforeEach(() => {
@@ -34,6 +35,14 @@ describe('AccountsService — balance computation', () => {
         archived: false,
       },
       { id: 'acc5', userId: A, name: 'Tips', type: 'CASH', archived: false },
+      // Valued account with NO valuation → "0.00".
+      {
+        id: 'acc6',
+        userId: A,
+        name: 'Loan',
+        type: 'MICROLOANS',
+        archived: false,
+      },
       { id: 'accB', userId: B, name: 'B Bank', type: 'BANK', archived: false },
     ];
     txns = [
@@ -91,6 +100,30 @@ describe('AccountsService — balance computation', () => {
       },
     ];
 
+    // acc4 (INVESTMENT) has two snapshots; the LATEST by asOf (1500.00) wins.
+    // The older one is listed LAST to prove it's max-by-asOf, not last-inserted.
+    valuations = [
+      {
+        userId: A,
+        accountId: 'acc4',
+        value: D('1500.00'),
+        asOf: new Date('2026-06-20'),
+      },
+      {
+        userId: A,
+        accountId: 'acc4',
+        value: D('1200.00'),
+        asOf: new Date('2026-06-10'),
+      },
+      // Another user's valuation on acc4 — must NEVER affect A.
+      {
+        userId: B,
+        accountId: 'acc4',
+        value: D('99999.00'),
+        asOf: new Date('2026-06-25'),
+      },
+    ];
+
     const prismaMock = {
       account: {
         findMany: jest.fn(({ where }) =>
@@ -143,6 +176,32 @@ describe('AccountsService — balance computation', () => {
           return Promise.resolve([...groups.values()]);
         }),
       },
+      accountValuation: {
+        findMany: jest.fn(({ where, distinct, orderBy }) => {
+          const ids: string[] = where.accountId?.in ?? [];
+          let rows = valuations.filter(
+            (v) =>
+              v.userId === where.userId && ids.includes(v.accountId as string),
+          );
+          // orderBy [{ accountId: 'asc' }, { asOf: 'desc' }]
+          rows = [...rows].sort((a, b) => {
+            if (a.accountId !== b.accountId)
+              return (a.accountId as string) < (b.accountId as string) ? -1 : 1;
+            return (b.asOf as Date).getTime() - (a.asOf as Date).getTime();
+          });
+          if (distinct?.includes('accountId')) {
+            const seen = new Set<string>();
+            rows = rows.filter((v) => {
+              if (seen.has(v.accountId as string)) return false;
+              seen.add(v.accountId as string);
+              return true;
+            });
+          }
+          return Promise.resolve(
+            rows.map((v) => ({ accountId: v.accountId, value: v.value })),
+          );
+        }),
+      },
     };
 
     service = new AccountsService(prismaMock as never);
@@ -170,10 +229,29 @@ describe('AccountsService — balance computation', () => {
     expect(b.acc3).toBe('0.00');
   });
 
-  it('a VALUED account ignores transactions and returns the "0.00" placeholder', async () => {
+  it('a VALUED account returns its LATEST valuation snapshot, not transactions', async () => {
     const b = await balancesById(A);
-    // acc4 has a 500.00 income on it, but it is INVESTMENT → not summed.
-    expect(b.acc4).toBe('0.00');
+    // acc4 (INVESTMENT) has a 500.00 income on it AND snapshots 1500/1200.
+    // Balance = latest snapshot (1500.00); the transaction is NOT summed.
+    expect(b.acc4).toBe('1500.00');
+  });
+
+  it('uses the greatest asOf snapshot (not the last inserted)', async () => {
+    // 1500.00 is asOf 2026-06-20; 1200.00 (asOf 2026-06-10) is inserted after it.
+    const b = await balancesById(A);
+    expect(b.acc4).toBe('1500.00');
+  });
+
+  it('a VALUED account with NO valuations is "0.00"', async () => {
+    const b = await balancesById(A);
+    expect(b.acc6).toBe('0.00'); // MICROLOANS, no snapshot
+  });
+
+  it("another user's valuations never affect this user's balance", async () => {
+    // B has a 99999.00 valuation on acc4 (asOf 2026-06-25, the greatest) — must
+    // be excluded because acc4 is A's and the query is userId-scoped.
+    const b = await balancesById(A);
+    expect(b.acc4).toBe('1500.00');
   });
 
   it('is decimal-exact (0.10 + 0.20 = "0.30", no float drift)', async () => {

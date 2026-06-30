@@ -38,15 +38,33 @@ export class AccountsService extends TenantScopedService<Account> {
     const accounts = await this.listForUser(userId, {
       orderBy: { createdAt: 'desc' },
     });
-    // One pair of grouped aggregates for ALL accounts — no per-account query.
-    const balances = await this.computeDerivedBalances(userId);
-    return accounts.map((account) => this.withBalance(account, balances));
+
+    // For ALL accounts at once: derived balances via 2 grouped aggregates, and
+    // the latest valuation per valued account via 1 distinct query — no N+1.
+    const hasDerived = accounts.some((a) => !this.isValued(a.type));
+    const valuedIds = accounts
+      .filter((a) => this.isValued(a.type))
+      .map((a) => a.id);
+    const [derived, valuations] = await Promise.all([
+      hasDerived
+        ? this.computeDerivedBalances(userId)
+        : Promise.resolve(new Map<string, Prisma.Decimal>()),
+      this.latestValuations(userId, valuedIds),
+    ]);
+
+    return accounts.map((a) => this.withBalance(a, derived, valuations));
   }
 
   async findOne(userId: string, id: string): Promise<AccountWithBalance> {
     const account = await this.getForUser(userId, id);
-    const balances = await this.computeDerivedBalances(userId);
-    return this.withBalance(account, balances);
+    const empty = new Map<string, Prisma.Decimal>();
+    // Only query what this account's type needs.
+    if (this.isValued(account.type)) {
+      const valuations = await this.latestValuations(userId, [id]);
+      return this.withBalance(account, empty, valuations);
+    }
+    const derived = await this.computeDerivedBalances(userId);
+    return this.withBalance(account, derived, empty);
   }
 
   async update(
@@ -125,21 +143,47 @@ export class AccountsService extends TenantScopedService<Account> {
     return balances;
   }
 
+  /**
+   * Latest valuation value per valued account, in ONE query: distinct on
+   * accountId after ordering [accountId asc, asOf desc] keeps the greatest-asOf
+   * row per account. Scoped to the caller's userId and the given account ids.
+   */
+  private async latestValuations(
+    userId: string,
+    accountIds: string[],
+  ): Promise<Map<string, Prisma.Decimal>> {
+    if (accountIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.prisma.accountValuation.findMany({
+      where: { userId, accountId: { in: accountIds } },
+      distinct: ['accountId'],
+      orderBy: [{ accountId: 'asc' }, { asOf: 'desc' }],
+      select: { accountId: true, value: true },
+    });
+    return new Map(rows.map((r) => [r.accountId, r.value]));
+  }
+
   private withBalance(
     account: Account,
     derived: Map<string, Prisma.Decimal>,
+    valuations: Map<string, Prisma.Decimal>,
   ): AccountWithBalance {
-    return { ...account, balance: this.balanceFor(account, derived) };
+    return {
+      ...account,
+      balance: this.balanceFor(account, derived, valuations),
+    };
   }
 
   private balanceFor(
     account: Account,
     derived: Map<string, Prisma.Decimal>,
+    valuations: Map<string, Prisma.Decimal>,
   ): string {
     if (this.isValued(account.type)) {
-      // TODO(valuations, Phase 5): balance = latest AccountValuation snapshot.
-      // Valued accounts IGNORE transaction flow, so do not sum transactions.
-      return '0.00';
+      // Valued accounts IGNORE transaction flow: balance = latest valuation
+      // snapshot, or "0.00" only when no snapshot exists yet.
+      return (valuations.get(account.id) ?? new Prisma.Decimal(0)).toFixed(2);
     }
     return (derived.get(account.id) ?? new Prisma.Decimal(0)).toFixed(2);
   }

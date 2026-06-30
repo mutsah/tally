@@ -47,6 +47,7 @@ model User {
   accounts     Account[]
   categories   Category[]
   transactions Transaction[]
+  valuations   AccountValuation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -90,6 +91,9 @@ model Account {
   txFrom Transaction[] @relation("TxFrom")
   txTo   Transaction[] @relation("TxTo")
 
+  // Manual value snapshots (INVESTMENT/MICROLOANS accounts only).
+  valuations AccountValuation[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -130,6 +134,27 @@ model Transaction {
   @@index([toAccountId])
   @@index([categoryId])
   @@map("transactions")
+}
+
+model AccountValuation {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  // Snapshot value (outstanding principal for microloans). >= 0. The LATEST
+  // snapshot by asOf is the valued account's balance — transactions are ignored.
+  value Decimal  @db.Decimal(18, 2)
+  asOf  DateTime
+  note  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([accountId, asOf])
+  @@index([userId])
+  @@index([accountId, asOf])
+  @@map("account_valuations")
 }
 
 model ResetPassword {

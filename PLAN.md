@@ -11,16 +11,15 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 
 ## Status
 
-- **Phase:** 4 complete — Transactions, transfers, and derived balances; **Phase 5 (Valuations)
-  next**
-- **Done:** Phases 0–4 complete. Scaffold + auth (`0f72e2c`); Accounts + `TenantScopedService`
+- **Phase:** 5 complete — Valuations; **Phase 6 (Dashboard) next**
+- **Done:** Phases 0–5 complete. Scaffold + auth (`0f72e2c`); Accounts + `TenantScopedService`
   scoping (`42de542`); test green-up (`c288b49`); Categories + transactional seeding (`5012a92`);
   Transactions income/expense CRUD + money-as-string interceptor (`faa4899`); single-row transfers
-  (`0640a34`); derived account balances from transaction flow (this commit). Deferred to Phase 8:
-  the accounts in-use delete guard.
-- **Next action:** **Phase 5 — Valuations.** `AccountValuation` model + module; latest snapshot
-  drives valued-account balance (replacing the current "0.00" placeholder); microloan monthly
-  snapshot flow (principal as balance, interest recorded as income).
+  (`0640a34`); derived account balances (`45305f7`); Valuations module + latest-snapshot balance
+  integration (this commit). Deferred to Phase 8: the accounts in-use delete guard.
+- **Next action:** **Phase 6 — Dashboard.** Net worth (+ per-account), spending-by-category
+  (parent rollups, transfers excluded), income vs expense, recent activity — all money as strings,
+  reconciling with the underlying data.
 - **Last updated:** 2026-06-29
 
 ---
@@ -95,10 +94,12 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 > has transactions — currently cascades; tracked below in Phase 8).
 
 ## Phase 5 — Valuations
-- [ ] `AccountValuation` model (userId, accountId, value, asOf, unique[accountId, asOf])
-- [ ] Valuations module: CRUD, latest snapshot drives valued-account balance, reject on
-      non-valued accounts
-- [ ] Microloan monthly snapshot flow (principal as balance; interest recorded as income)
+- [x] `AccountValuation` model (userId, accountId, value, asOf, unique[accountId, asOf])
+- [x] Valuations module: CRUD, latest snapshot (greatest asOf) drives valued-account balance
+      (the "0.00" placeholder is now the real snapshot; "0.00" only when none exists), reject on
+      non-valued accounts (CASH/BANK → 400); value >= 0; duplicate (accountId, asOf) → 409
+- [x] Microloan monthly snapshot flow — supported with no special code: a microloan valuation is
+      the outstanding principal (snapshot drives balance); interest is a normal INCOME transaction
 
 ## Phase 6 — Dashboard
 - [ ] Endpoints: net worth (+ per-account), spending-by-category (parent rollups, transfers
