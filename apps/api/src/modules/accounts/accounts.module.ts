@@ -7,5 +7,6 @@ import { AccountsService } from './accounts.service';
   imports: [PrismaModule],
   controllers: [AccountsController],
   providers: [AccountsService],
+  exports: [AccountsService], // reused by the dashboard for net worth
 })
 export class AccountsModule {}

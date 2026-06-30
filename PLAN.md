@@ -11,16 +11,16 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 
 ## Status
 
-- **Phase:** 5 complete — Valuations; **Phase 6 (Dashboard) next**
-- **Done:** Phases 0–5 complete. Scaffold + auth (`0f72e2c`); Accounts + `TenantScopedService`
+- **Phase:** 6 complete — Dashboard; **Phase 7 (CSV export) next**
+- **Done:** Phases 0–6 complete. Scaffold + auth (`0f72e2c`); Accounts + `TenantScopedService`
   scoping (`42de542`); test green-up (`c288b49`); Categories + transactional seeding (`5012a92`);
   Transactions income/expense CRUD + money-as-string interceptor (`faa4899`); single-row transfers
-  (`0640a34`); derived account balances (`45305f7`); Valuations module + latest-snapshot balance
-  integration (this commit). Deferred to Phase 8: the accounts in-use delete guard.
-- **Next action:** **Phase 6 — Dashboard.** Net worth (+ per-account), spending-by-category
-  (parent rollups, transfers excluded), income vs expense, recent activity — all money as strings,
-  reconciling with the underlying data.
-- **Last updated:** 2026-06-29
+  (`0640a34`); derived account balances (`45305f7`); Valuations + latest-snapshot balance
+  integration (`8a0193d`); Dashboard aggregation endpoints (this commit). Deferred to Phase 8: the
+  accounts/categories in-use delete guards.
+- **Next action:** **Phase 7 — CSV export.** Filtered transactions export endpoint (decimal
+  strings, ISO dates, correct headers) that opens cleanly in a spreadsheet.
+- **Last updated:** 2026-06-30
 
 ---
 
@@ -102,9 +102,11 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
       the outstanding principal (snapshot drives balance); interest is a normal INCOME transaction
 
 ## Phase 6 — Dashboard
-- [ ] Endpoints: net worth (+ per-account), spending-by-category (parent rollups, transfers
-      excluded), income vs expense, recent activity — all money as strings
-- [ ] Numbers reconcile with underlying data
+- [x] Endpoints: net worth (+ per-account, reuses balance logic — no transaction re-sum),
+      spending-by-category (parent + children rollup, transfers excluded via kind filter), income
+      vs expense (transfers excluded), recent activity (includes transfers) — all money as strings
+- [x] Numbers reconcile with underlying data (transfers never counted as spend/income; archived
+      excluded from net worth; verified by spec + runtime)
 
 ## Phase 7 — CSV export
 - [ ] Filtered transactions export endpoint (decimal strings, ISO dates, correct headers)
@@ -121,6 +123,9 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 - [ ] Remove redundant email index on `User` (`@@index([email])` duplicates the `@unique`)
 - [ ] Accounts in-use delete guard: block deleting an account that has transactions (currently the
       FK cascades and would delete its transactions); `TODO(transactions)` in accounts.service
+- [ ] Categories in-use delete guard: block deleting a category that has transactions (currently
+      the FK SetNull-orphans them, so they drop out of spending-by-category but still count in
+      income-vs-expense — a dashboard discrepancy); `TODO(transactions)` in categories.service
 - [ ] (Optional) Postgres row-level security as a second isolation layer
 
 ## Phase 9 — Frontend (`apps/web`)
