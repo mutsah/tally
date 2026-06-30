@@ -130,6 +130,8 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 - [ ] Categories in-use delete guard: block deleting a category that has transactions (currently
       the FK SetNull-orphans them, so they drop out of spending-by-category but still count in
       income-vs-expense — a dashboard discrepancy); `TODO(transactions)` in categories.service
+- [ ] CSV formula injection — prefix note/name fields starting with `=` `+` `-` `@` (and tab/CR)
+      with a leading apostrophe so spreadsheets treat them as text, not formulas
 - [ ] (Optional) Postgres row-level security as a second isolation layer
 
 ## Phase 9 — Frontend (`apps/web`)
