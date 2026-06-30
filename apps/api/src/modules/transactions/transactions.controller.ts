@@ -8,15 +8,18 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiNotFoundResponse,
   ApiOperation,
+  ApiProduces,
   ApiTags,
 } from '@nestjs/swagger';
 import { Transaction } from '@prisma/client';
+import type { Response } from 'express';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { GetUser } from 'src/common/decorators/get-user.decorator';
 import {
@@ -26,6 +29,7 @@ import {
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { ListTransactionsQueryDto } from './dto/list-transactions-query.dto';
+import { ExportTransactionsQueryDto } from './dto/export-transactions-query.dto';
 
 @ApiTags('transactions')
 @ApiBearerAuth('JWT-auth')
@@ -52,6 +56,26 @@ export class TransactionsController {
     @Query() query: ListTransactionsQueryDto,
   ): Promise<PaginatedTransactions> {
     return this.transactionsService.findAll(userId, query);
+  }
+
+  // Declared BEFORE :id so "export" isn't captured by the :id param route.
+  @Get('export')
+  @ApiOperation({
+    summary: "Export the current user's filtered transactions as CSV",
+  })
+  @ApiProduces('text/csv')
+  async exportCsv(
+    @GetUser('id') userId: string,
+    @Query() query: ExportTransactionsQueryDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const csv = await this.transactionsService.exportCsv(userId, query);
+    const date = new Date().toISOString().slice(0, 10);
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="tally-transactions-${date}.csv"`,
+    });
+    res.send(csv);
   }
 
   @Get(':id')

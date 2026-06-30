@@ -8,6 +8,8 @@ import {
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { ListTransactionsQueryDto } from './dto/list-transactions-query.dto';
+import { ExportTransactionsQueryDto } from './dto/export-transactions-query.dto';
+import { toCsv } from 'src/common/utils/csv';
 
 export interface PaginatedTransactions {
   data: Transaction[];
@@ -83,6 +85,49 @@ export class TransactionsService extends TenantScopedService<Transaction> {
     ]);
 
     return { data, page, pageSize, total };
+  }
+
+  /**
+   * The full filtered set (no pagination) as an RFC 4180 CSV string, date desc,
+   * scoped to the user. Amounts are exact 2-dp strings (Prisma.Decimal.toFixed,
+   * no float, no locale). Columns: date, kind, amount, account, toAccount,
+   * category, note. Transfers carry both accounts and no category;
+   * income/expense carry a category and no toAccount.
+   */
+  async exportCsv(
+    userId: string,
+    query: ExportTransactionsQueryDto,
+  ): Promise<string> {
+    const where = this.buildFilter(query);
+    const txns = await this.prisma.transaction.findMany({
+      where: { ...where, userId },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        account: { select: { name: true } },
+        toAccount: { select: { name: true } },
+        category: { select: { name: true } },
+      },
+    });
+
+    const header = [
+      'date',
+      'kind',
+      'amount',
+      'account',
+      'toAccount',
+      'category',
+      'note',
+    ];
+    const rows = txns.map((t) => [
+      t.date.toISOString().slice(0, 10),
+      t.kind,
+      t.amount.toFixed(2),
+      t.account?.name ?? '',
+      t.toAccount?.name ?? '',
+      t.category?.name ?? '',
+      t.note ?? '',
+    ]);
+    return toCsv(header, rows);
   }
 
   findOne(userId: string, id: string): Promise<Transaction> {

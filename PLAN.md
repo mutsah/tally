@@ -11,15 +11,17 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 
 ## Status
 
-- **Phase:** 6 complete — Dashboard; **Phase 7 (CSV export) next**
-- **Done:** Phases 0–6 complete. Scaffold + auth (`0f72e2c`); Accounts + `TenantScopedService`
+- **Phase:** 7 complete — CSV export. **v1 backend feature-complete** (Phases 1–7); **Phase 8
+  (Hardening) next**
+- **Done:** Phases 0–7 complete. Scaffold + auth (`0f72e2c`); Accounts + `TenantScopedService`
   scoping (`42de542`); test green-up (`c288b49`); Categories + transactional seeding (`5012a92`);
   Transactions income/expense CRUD + money-as-string interceptor (`faa4899`); single-row transfers
   (`0640a34`); derived account balances (`45305f7`); Valuations + latest-snapshot balance
-  integration (`8a0193d`); Dashboard aggregation endpoints (this commit). Deferred to Phase 8: the
-  accounts/categories in-use delete guards.
-- **Next action:** **Phase 7 — CSV export.** Filtered transactions export endpoint (decimal
-  strings, ISO dates, correct headers) that opens cleanly in a spreadsheet.
+  integration (`8a0193d`); Dashboard aggregation endpoints (`052e751`); CSV export (this commit).
+  Deferred to Phase 8: the accounts/categories in-use delete guards.
+- **Next action:** **Phase 8 — Hardening.** Wire ThrottlerGuard globally; env-var validation on
+  boot; consistent error envelope; the deferred in-use delete guards; plus the other Phase 8
+  items. Then Phase 9 (frontend).
 - **Last updated:** 2026-06-30
 
 ---
@@ -109,8 +111,10 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
       excluded from net worth; verified by spec + runtime)
 
 ## Phase 7 — CSV export
-- [ ] Filtered transactions export endpoint (decimal strings, ISO dates, correct headers)
-- [ ] Opens cleanly in a spreadsheet, amounts match
+- [x] Filtered transactions export endpoint (`GET /transactions/export`; same filters as the list;
+      exact 2-dp decimal strings, ISO dates, RFC-4180 escaping; text/csv + attachment headers)
+- [x] Opens cleanly in a spreadsheet, amounts match (comma/quote/newline-safe; userId-scoped;
+      empty → header-only)
 
 ## Phase 8 — Hardening
 - [ ] Wire ThrottlerGuard globally (APP_GUARD) — matters once internet-exposed
