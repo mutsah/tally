@@ -52,15 +52,19 @@ export class TransactionsService extends TenantScopedService<Transaction> {
       dto.categoryId ?? null,
     );
 
-    return this.createForUser(userId, {
-      kind: dto.kind,
-      amount,
-      date: new Date(dto.date),
-      note: dto.note ?? null,
-      accountId: dto.accountId,
-      toAccountId: relations.toAccountId,
-      categoryId: relations.categoryId,
-    });
+    try {
+      return await this.createForUser(userId, {
+        kind: dto.kind,
+        amount,
+        date: new Date(dto.date),
+        note: dto.note ?? null,
+        accountId: dto.accountId,
+        toAccountId: relations.toAccountId,
+        categoryId: relations.categoryId,
+      });
+    } catch (error) {
+      this.handleWriteError(error);
+    }
   }
 
   async findAll(
@@ -92,7 +96,9 @@ export class TransactionsService extends TenantScopedService<Transaction> {
    * scoped to the user. Amounts are exact 2-dp strings (Prisma.Decimal.toFixed,
    * no float, no locale). Columns: date, kind, amount, account, toAccount,
    * category, note. Transfers carry both accounts and no category;
-   * income/expense carry a category and no toAccount.
+   * income/expense carry a category and no toAccount; OPENING carries only its
+   * source account (no toAccount, no category). No kind is filtered out — the
+   * export is the full activity record.
    */
   async exportCsv(
     userId: string,
@@ -177,6 +183,7 @@ export class TransactionsService extends TenantScopedService<Transaction> {
         accountId,
         toAccountId,
         categoryId,
+        id,
       );
 
       if (dto.accountId !== undefined) {
@@ -194,7 +201,11 @@ export class TransactionsService extends TenantScopedService<Transaction> {
       return current;
     }
 
-    return this.updateForUser(userId, id, data);
+    try {
+      return await this.updateForUser(userId, id, data);
+    } catch (error) {
+      this.handleWriteError(error);
+    }
   }
 
   remove(userId: string, id: string): Promise<Transaction> {
@@ -235,6 +246,9 @@ export class TransactionsService extends TenantScopedService<Transaction> {
    * stored:
    *   INCOME/EXPENSE → categoryId required (owned, matching kind), toAccountId null.
    *   TRANSFER       → toAccountId required (owned, ≠ source), categoryId null.
+   *   OPENING        → toAccountId null, categoryId null, at most one per account.
+   * `excludeTxId` omits the current row from the one-OPENING-per-account check
+   * (create passes undefined; update passes the row being edited).
    */
   private async validateRelations(
     userId: string,
@@ -242,6 +256,7 @@ export class TransactionsService extends TenantScopedService<Transaction> {
     accountId: string,
     toAccountId: string | null,
     categoryId: string | null,
+    excludeTxId?: string,
   ): Promise<ResolvedRelations> {
     await this.assertAccountOwned(userId, accountId, 'accountId');
 
@@ -261,6 +276,21 @@ export class TransactionsService extends TenantScopedService<Transaction> {
       }
       await this.assertAccountOwned(userId, toAccountId, 'toAccountId');
       return { toAccountId, categoryId: null };
+    }
+
+    if (kind === TransactionKind.OPENING) {
+      if (toAccountId) {
+        throw new BadRequestException(
+          'An opening balance cannot have a destination account (toAccountId)',
+        );
+      }
+      if (categoryId) {
+        throw new BadRequestException(
+          'An opening balance cannot have a category',
+        );
+      }
+      await this.assertSingleOpening(userId, accountId, excludeTxId);
+      return { toAccountId: null, categoryId: null };
     }
 
     // INCOME or EXPENSE
@@ -309,6 +339,54 @@ export class TransactionsService extends TenantScopedService<Transaction> {
     if (!account) {
       throw new BadRequestException(
         `${field} does not reference one of your accounts`,
+      );
+    }
+  }
+
+  /**
+   * Map a write failure to a clean HTTP error. The only unique constraint on the
+   * transactions table is the partial index enforcing one OPENING per account, so
+   * a P2002 here means a duplicate OPENING slipped past `assertSingleOpening` (a
+   * double-submit race) and the DB backstopped it — surface the same friendly 400.
+   */
+  private handleWriteError(error: unknown): never {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      throw new BadRequestException(
+        'This account already has an opening balance',
+      );
+    }
+    throw error;
+  }
+
+  /**
+   * At most one OPENING per account. First line of defence: this pre-check
+   * returns a clean 400 for the common (non-racing) case. The true backstop
+   * against a double-submit race is the partial unique index
+   * `transactions_accountId_opening_key` (see migration
+   * 20260701130000_add_opening_account_unique_index), whose P2002 is mapped by
+   * `handleWriteError`. Kind is immutable after creation, so create is the only
+   * way to add an OPENING; on update, `excludeTxId` skips the row being edited.
+   */
+  private async assertSingleOpening(
+    userId: string,
+    accountId: string,
+    excludeTxId?: string,
+  ): Promise<void> {
+    const existing = await this.prisma.transaction.findFirst({
+      where: {
+        userId,
+        accountId,
+        kind: TransactionKind.OPENING,
+        ...(excludeTxId ? { NOT: { id: excludeTxId } } : {}),
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        'This account already has an opening balance',
       );
     }
   }

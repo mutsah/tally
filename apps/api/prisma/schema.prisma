@@ -31,6 +31,10 @@ enum TransactionKind {
   INCOME
   EXPENSE
   TRANSFER
+  // Starting balance for a derived (CASH/BANK) account. Contributes to the
+  // account balance like INCOME, but — like TRANSFER — is excluded from all
+  // income/expense/spending aggregates. At most one per account (service-enforced).
+  OPENING
 }
 
 

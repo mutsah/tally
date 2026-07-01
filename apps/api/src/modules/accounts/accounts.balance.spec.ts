@@ -269,6 +269,32 @@ describe('AccountsService — balance computation', () => {
     expect(bList[0].balance).toBe('0.00');
   });
 
+  it('an OPENING contributes to a derived balance exactly like income', async () => {
+    // acc3 (Wallet, CASH) has no other flow → its balance is the OPENING.
+    txns.push({
+      userId: A,
+      kind: 'OPENING',
+      amount: D('500.00'),
+      accountId: 'acc3',
+      toAccountId: null,
+    });
+    const b = await balancesById(A);
+    expect(b.acc3).toBe('500.00');
+  });
+
+  it('OPENING stacks with income/expense/transfers on the same account', async () => {
+    // acc1 is 649.50 from flow; a 200.00 OPENING adds like income → 849.50.
+    txns.push({
+      userId: A,
+      kind: 'OPENING',
+      amount: D('200.00'),
+      accountId: 'acc1',
+      toAccountId: null,
+    });
+    const b = await balancesById(A);
+    expect(b.acc1).toBe('849.50');
+  });
+
   it('balance is a string, and findOne includes it too', async () => {
     const b = await balancesById(A);
     expect(typeof b.acc1).toBe('string');

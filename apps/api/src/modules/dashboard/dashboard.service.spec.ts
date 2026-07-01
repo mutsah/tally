@@ -307,6 +307,23 @@ describe('DashboardService', () => {
       expect(res.grandTotal).toBe('380.00'); // not 380 + 9999
     });
 
+    it('excludes OPENING from spending totals (like TRANSFER)', async () => {
+      // An opening balance has no category and is not spend — it must not move
+      // the grand total, regardless of amount.
+      txns.push({
+        id: 'open1',
+        userId: A,
+        kind: 'OPENING',
+        amount: D('5000.00'),
+        date: dt('2026-06-09'),
+        accountId: 'acc-a',
+        toAccountId: null,
+        categoryId: null,
+      });
+      const res = await service.spendingByCategory(A);
+      expect(res.grandTotal).toBe('380.00');
+    });
+
     it('is decimal-exact (0.10 + 0.20 = "0.30")', async () => {
       txns = [
         {
@@ -340,6 +357,27 @@ describe('DashboardService', () => {
 
   describe('income-vs-expense', () => {
     it('totals income and expense, transfers excluded, net correct', async () => {
+      const res = await service.incomeVsExpense(A);
+      expect(res).toEqual({
+        income: '1000.00',
+        expense: '380.00',
+        net: '620.00',
+      });
+    });
+
+    it('excludes OPENING from income, expense, and net (the savings figure)', async () => {
+      // OPENING is a starting balance, not earnings — income/expense/net must be
+      // identical whether or not an OPENING exists (mirrors TRANSFER exclusion).
+      txns.push({
+        id: 'open1',
+        userId: A,
+        kind: 'OPENING',
+        amount: D('5000.00'),
+        date: dt('2026-06-09'),
+        accountId: 'acc-a',
+        toAccountId: null,
+        categoryId: null,
+      });
       const res = await service.incomeVsExpense(A);
       expect(res).toEqual({
         income: '1000.00',

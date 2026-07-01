@@ -13,7 +13,7 @@ import {
 export class CreateTransactionDto {
   @ApiProperty({
     description:
-      'INCOME, EXPENSE, or TRANSFER. INCOME/EXPENSE require categoryId and forbid toAccountId; TRANSFER requires toAccountId and forbids categoryId.',
+      'INCOME, EXPENSE, TRANSFER, or OPENING. INCOME/EXPENSE require categoryId and forbid toAccountId; TRANSFER requires toAccountId and forbids categoryId; OPENING (a starting balance, one per account) forbids both. OPENING and TRANSFER are excluded from income/expense aggregates.',
     enum: TransactionKind,
     example: TransactionKind.EXPENSE,
   })

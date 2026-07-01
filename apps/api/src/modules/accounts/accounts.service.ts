@@ -90,11 +90,13 @@ export class AccountsService extends TenantScopedService<Account> {
    * Net derived balance per account from the caller's own transactions, using
    * two grouped aggregates (decimal-safe, no JS number math):
    *   + Σ INCOME(amount)           where accountId = acc
+   *   + Σ OPENING(amount)          where accountId = acc      (starting balance)
    *   − Σ EXPENSE(amount)          where accountId = acc
    *   − Σ TRANSFER(amount)         where accountId = acc      (transfers OUT)
    *   + Σ TRANSFER(amount)         where toAccountId = acc    (transfers IN)
-   * A transfer is read once on each side. Valued accounts are not included here
-   * (they ignore transaction flow — see withBalance).
+   * OPENING adds to the account exactly like INCOME. A transfer is read once on
+   * each side. Valued accounts are not included here (they ignore transaction
+   * flow — see withBalance).
    */
   private async computeDerivedBalances(
     userId: string,
@@ -128,8 +130,11 @@ export class AccountsService extends TenantScopedService<Account> {
     };
 
     for (const group of bySource) {
-      if (group.kind === TransactionKind.INCOME) {
-        apply(group.accountId, group._sum.amount, 1);
+      if (
+        group.kind === TransactionKind.INCOME ||
+        group.kind === TransactionKind.OPENING
+      ) {
+        apply(group.accountId, group._sum.amount, 1); // OPENING adds like income
       } else if (group.kind === TransactionKind.EXPENSE) {
         apply(group.accountId, group._sum.amount, -1);
       } else if (group.kind === TransactionKind.TRANSFER) {

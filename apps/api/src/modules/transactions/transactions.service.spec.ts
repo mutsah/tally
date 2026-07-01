@@ -32,6 +32,9 @@ describe('TransactionsService', () => {
           matchesWhere(row, sub as Record<string, unknown>),
         );
       }
+      if (k === 'NOT' && v && typeof v === 'object') {
+        return !matchesWhere(row, v as Record<string, unknown>);
+      }
       if (k === 'date' && v && typeof v === 'object') {
         const range = v as { gte?: Date; lte?: Date };
         const rowDate = row.date as Date;
@@ -389,6 +392,105 @@ describe('TransactionsService', () => {
       expect(expenseIds).not.toContain(transfer.id);
       expect(incomeIds).not.toContain(transfer.id);
       expect(all.find((t) => t.id === transfer.id)?.kind).toBe('TRANSFER');
+    });
+  });
+
+  describe('opening balances (starting balance for a derived account)', () => {
+    const validOpening = {
+      kind: 'OPENING' as never,
+      amount: '1000.00',
+      date: '2026-06-15T00:00:00.000Z',
+      accountId: 'acc-a',
+    };
+
+    it('creates one row with the account, no category, no toAccount, Decimal amount', async () => {
+      const before = txStore.length;
+      const res = await service.create(A, validOpening);
+      expect(prismaMock.transaction.create).toHaveBeenCalledTimes(1);
+      expect(txStore.length).toBe(before + 1);
+      expect(res).toMatchObject({
+        kind: 'OPENING',
+        accountId: 'acc-a',
+        toAccountId: null,
+        categoryId: null,
+        userId: A,
+      });
+      expect(res.amount).toBeInstanceOf(Prisma.Decimal);
+    });
+
+    it('rejects an OPENING that carries a category', async () => {
+      await expect(
+        service.create(A, {
+          ...validOpening,
+          categoryId: 'cat-exp-a',
+        } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects an OPENING that carries a destination account', async () => {
+      await expect(
+        service.create(A, { ...validOpening, toAccountId: 'acc-a2' } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("rejects an OPENING on an account that isn't the caller's", async () => {
+      await expect(
+        service.create(A, { ...validOpening, accountId: 'acc-b' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects a non-positive amount (must be > 0, like every kind)', async () => {
+      await expect(
+        service.create(A, { ...validOpening, amount: '0' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('allows at most one OPENING per account (rejects a second)', async () => {
+      await service.create(A, validOpening);
+      await expect(service.create(A, validOpening)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('rejected at the DB constraint when the pre-check races (P2002 → clean 400, not a 500)', async () => {
+      // Simulate a double-submit race: the pre-check sees no existing OPENING
+      // (the concurrent insert is not yet visible), but the partial unique index
+      // `transactions_accountId_opening_key` rejects the second insert with P2002.
+      prismaMock.transaction.findFirst.mockResolvedValueOnce(null); // assertSingleOpening passes
+      prismaMock.transaction.create.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: 'test',
+          meta: { target: ['accountId'] },
+        }),
+      );
+      await expect(service.create(A, validOpening)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('the one-per-account rule is scoped per account and per user', async () => {
+      await service.create(A, validOpening); // acc-a
+      // Same user, different account → allowed.
+      await expect(
+        service.create(A, { ...validOpening, accountId: 'acc-a2' }),
+      ).resolves.toMatchObject({ kind: 'OPENING', accountId: 'acc-a2' });
+      // Different user opening their own account → allowed (scoped by userId).
+      await expect(
+        service.create(B, { ...validOpening, accountId: 'acc-b' }),
+      ).resolves.toMatchObject({ kind: 'OPENING', userId: B });
+    });
+
+    it('is movement-like, à la TRANSFER: excluded from EXPENSE and INCOME subsets', async () => {
+      const opening = await service.create(A, validOpening);
+      const all = (await service.findAll(A, { pageSize: 100 })).data;
+      const expenseIds = all
+        .filter((t) => t.kind === 'EXPENSE')
+        .map((t) => t.id);
+      const incomeIds = all.filter((t) => t.kind === 'INCOME').map((t) => t.id);
+      expect(expenseIds).not.toContain(opening.id);
+      expect(incomeIds).not.toContain(opening.id);
+      expect(all.find((t) => t.id === opening.id)?.kind).toBe('OPENING');
     });
   });
 });
