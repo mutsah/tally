@@ -18,7 +18,12 @@ export default async function AppLayout({
       <Sidebar />
       <div className="flex min-h-screen min-w-0 flex-col">
         <Topbar user={user} />
-        <main className="flex-1 px-6 pb-12 pt-2 md:px-8">{children}</main>
+        {/* Full-bleed content: fill the region right of the sidebar with
+            consistent page gutters (matches the dashboard reference — no
+            centered max-width column). Every app page inherits this. */}
+        <main className="w-full min-w-0 flex-1 px-6 pb-10 pt-6 md:px-8">
+          {children}
+        </main>
       </div>
     </div>
   );
