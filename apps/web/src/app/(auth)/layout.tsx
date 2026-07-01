@@ -1,0 +1,12 @@
+// (auth) route group — unauthenticated shell. Real auth arrives in F1.
+export default function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-6">
+      {children}
+    </div>
+  );
+}

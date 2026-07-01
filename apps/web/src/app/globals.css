@@ -1,0 +1,134 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Tally design tokens — the single styling foundation.
+ * Source of truth: root CLAUDE.md "Design tokens" + docs/tally-design.html.
+ * Layer 1 is the raw Tally palette (verbatim from CLAUDE.md). Layer 2 maps
+ * shadcn/ui's semantic token names onto that palette, so components consume
+ * theme tokens (bg-primary, text-muted-foreground, …) — never ad-hoc hex.
+ */
+:root {
+  /* ── Layer 1 · Tally palette (CLAUDE.md) ───────────────────────────── */
+  --bg: #eef0e9;
+  --surface: #fbfaf6;
+  --surface-2: #f4f2ec;
+  --pine: #1e3a32;
+  --pine-deep: #13241d;
+  --pine-soft: #2c4a40;
+  --pine-line: #274137;
+  --gold: #a9802f;
+  --gold-soft: #c19a4d;
+  --gold-bg: rgba(169, 128, 47, 0.12);
+  --ink: #1b2420;
+  /* CLAUDE.md's design token is named `--muted`; renamed here to `--muted-ink`
+     so it doesn't clash with shadcn's `--muted` (a surface, not a text color). */
+  --muted-ink: #5b6a62;
+  --faint: #8a968f;
+  --border-strong: #d6d2c4;
+  --pos: #2f7d57;
+  --pos-bg: rgba(47, 125, 87, 0.12);
+  --neg: #a8503e;
+  --neg-bg: rgba(168, 80, 62, 0.1);
+  --radius: 18px;
+  --radius-sm: 12px;
+  --shadow: 0 16px 36px -26px rgba(19, 36, 29, 0.55);
+
+  /* ── Layer 2 · shadcn/ui semantic tokens → Tally palette ───────────── */
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--pine);
+  --primary-foreground: #f1efe4;
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--muted-ink);
+  --accent: var(--gold);
+  --accent-foreground: var(--pine-deep);
+  --destructive: var(--neg);
+  --destructive-foreground: #fbfaf6;
+  --border: #e3e0d5;
+  --input: var(--border-strong);
+  --ring: var(--gold);
+}
+
+/*
+ * Expose the tokens to Tailwind's utility engine. `inline` resolves the CSS
+ * variables at use-site. Radius utilities anchor on Tally's --radius (18px)
+ * with --radius-sm computing to 12px.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Brand extras usable directly: bg-surface-2, bg-pine, text-gold, … */
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-pine: var(--pine);
+  --color-pine-deep: var(--pine-deep);
+  --color-pine-soft: var(--pine-soft);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --color-faint: var(--faint);
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  --shadow-tally: var(--shadow);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display), Georgia, serif;
+    font-weight: 600;
+    line-height: 1.15;
+    color: var(--pine-deep);
+  }
+  /* Money and figures render in JetBrains Mono with tabular figures. */
+  .num {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-feature-settings: "tnum";
+  }
+}
