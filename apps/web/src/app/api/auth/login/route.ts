@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { callNestAuth, isAuthTokens } from '@/lib/auth/nest-auth';
 import { setAuthCookies } from '@/lib/auth/cookies';
+import { enforceSameOrigin } from '@/lib/auth/same-origin';
 
 export async function POST(req: Request) {
+  const blocked = enforceSameOrigin(req);
+  if (blocked) return blocked;
+
   const body = (await req.json().catch(() => ({}))) as {
     email?: string;
     password?: string;

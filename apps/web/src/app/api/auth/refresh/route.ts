@@ -2,8 +2,12 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { callNestAuth, isAuthTokens } from '@/lib/auth/nest-auth';
 import { COOKIE, setAuthCookies, clearAuthCookies } from '@/lib/auth/cookies';
+import { enforceSameOrigin } from '@/lib/auth/same-origin';
 
-export async function POST() {
+export async function POST(req: Request) {
+  const blocked = enforceSameOrigin(req);
+  if (blocked) return blocked;
+
   const store = await cookies();
   const refresh = store.get(COOKIE.refresh)?.value;
   if (!refresh) {
