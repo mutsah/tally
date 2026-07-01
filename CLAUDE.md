@@ -68,6 +68,11 @@ Fonts: Fraunces (display) · Hanken Grotesk (body) · JetBrains Mono (numbers/mo
 --radius:18px; --radius-sm:12px;
 --shadow:0 16px 36px -26px rgba(19,36,29,0.55);
 
+Note on `--muted`: it is a **text** color (#5b6a62), not a surface. shadcn/ui already uses
+`--muted` (a surface) and `--muted-foreground` (dim text). So in apps/web this token is authored
+as `--muted-ink` and mapped onto shadcn's `--muted-foreground`; shadcn's `--muted` surface points
+at `--surface-2`. Same values, different names — not drift.
+
 ## v1 scope — build only this
 Auth (from boilerplate) → per-user tenancy → accounts → categories → transactions/transfers →
 valuations → dashboard → CSV export. Frontend and deployment follow. Do NOT build budgets,
