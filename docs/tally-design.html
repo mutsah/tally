@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tally — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef0e9; --surface:#fbfaf6; --surface-2:#f4f2ec;
+    --pine:#1e3a32; --pine-deep:#13241d; --pine-soft:#2c4a40; --pine-line:#274137;
+    --gold:#a9802f; --gold-soft:#c19a4d; --gold-bg:rgba(169,128,47,0.12);
+    --ink:#1b2420; --muted:#5b6a62; --faint:#8a968f;
+    --border:#e3e0d5; --border-strong:#d6d2c4;
+    --pos:#2f7d57; --pos-bg:rgba(47,125,87,0.12);
+    --neg:#a8503e; --neg-bg:rgba(168,80,62,0.10);
+    --radius:18px; --radius-sm:12px;
+    --shadow:0 16px 36px -26px rgba(19,36,29,0.55);
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  h1,h2,h3,h4{font-family:"Fraunces",Georgia,serif;font-weight:600;line-height:1.15;color:var(--pine-deep);margin:0 0 .5em}
+  p{margin:0 0 1em}
+  a{color:var(--pine-soft);text-decoration:none;border-bottom:1px solid var(--border-strong)}
+  a:hover{color:var(--gold)}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  .num{font-family:"JetBrains Mono",ui-monospace,monospace;font-feature-settings:"tnum"}
+  ::selection{background:var(--gold-bg)}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+
+  header.site{background:var(--pine);color:#f1efe4;border-bottom:1px solid var(--pine-deep);position:relative;overflow:hidden}
+  .head-inner{max-width:var(--maxw);margin:0 auto;padding:48px 28px 32px;position:relative;z-index:1}
+  .glow{position:absolute;right:-120px;top:-120px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(169,128,47,.22),transparent 70%);pointer-events:none}
+  .wordmark{display:inline-flex;align-items:center;gap:9px;font-family:"Fraunces",serif;font-weight:600;font-size:1.05rem;color:#f1efe4;letter-spacing:.01em;margin-bottom:26px}
+  .wordmark .leaf{width:22px;height:22px;border-radius:7px;background:var(--gold);display:flex;align-items:center;justify-content:center;color:var(--pine-deep);font-size:.85rem;font-weight:700}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:14px}
+  header.site h1{color:#f4f2ec;font-size:2.7rem;margin:0 0 .3em}
+  .lede{color:#c7d2c9;font-size:1.08rem;max-width:54ch;margin:0}
+
+  nav.tabs{position:sticky;top:0;z-index:20;background:var(--pine-deep);border-bottom:1px solid var(--pine-line)}
+  .tabs-inner{max-width:var(--maxw);margin:0 auto;display:flex;gap:2px;padding:0 18px;overflow-x:auto}
+  .tab{appearance:none;background:none;border:none;color:#9db0a6;font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:15px 15px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:#e7ede8}
+  .tab[aria-selected="true"]{color:#f4f2ec;border-bottom-color:var(--gold)}
+
+  main{max-width:var(--maxw);margin:0 auto;padding:44px 28px 40px}
+  .panel{display:none;animation:fade .4s ease}
+  .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .section-eyebrow{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+  h2.panel-title{font-size:1.95rem;margin-bottom:.35em}
+  .sub{color:var(--muted);max-width:62ch;margin-bottom:2em;font-size:1.02rem}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;box-shadow:var(--shadow)}
+  .grid{display:grid;gap:16px;margin-bottom:20px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .card h3{font-size:1.12rem;margin-bottom:.4em}
+  .card p:last-child{margin-bottom:0}
+  .card .kicker{font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:7px}
+  .feature{background:var(--pine);color:#eef2ee;border:none}
+  .feature h3,.feature h4{color:#f4f2ec}
+  .feature p{color:#c2cec5}
+  .feature .num{color:#fff}
+
+  ul.clean{list-style:none;padding:0;margin:0}
+  ul.clean li{padding:9px 0 9px 22px;position:relative;border-bottom:1px solid var(--border);font-size:.95rem}
+  ul.clean li:last-child{border-bottom:none}
+  ul.clean li::before{content:"";position:absolute;left:2px;top:16px;width:7px;height:7px;border-radius:2px;background:var(--gold)}
+  ul.clean.no li::before{background:var(--neg)}
+
+  ol.steps{list-style:none;counter-reset:s;padding:0;margin:0}
+  ol.steps li{counter-increment:s;padding:10px 0 10px 40px;position:relative;border-bottom:1px solid var(--border);font-size:.95rem}
+  ol.steps li:last-child{border-bottom:none}
+  ol.steps li::before{content:counter(s,decimal-leading-zero);position:absolute;left:0;top:9px;font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--gold);border:1px solid var(--border-strong);border-radius:6px;width:26px;height:24px;display:flex;align-items:center;justify-content:center}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 6px}
+  .chip{font-size:.82rem;padding:5px 12px;border-radius:999px;background:var(--gold-bg);border:1px solid rgba(169,128,47,.3);color:#7a5e22}
+  .chip.inc{background:var(--pos-bg);border-color:rgba(47,125,87,.3);color:#245c40}
+
+  table.data{width:100%;border-collapse:collapse;font-size:.9rem}
+  table.data th{text-align:left;font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:10px 12px;border-bottom:1px solid var(--border-strong)}
+  table.data td{padding:11px 12px;border-bottom:1px solid var(--border)}
+  table.data td.n{text-align:right;font-family:"JetBrains Mono",monospace;font-feature-settings:"tnum"}
+  table.data tr:last-child td{border-bottom:none}
+
+  code.inline{background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:1px 6px;font-family:"JetBrains Mono",monospace;font-size:.85em;color:#3d5249}
+  .badge{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:6px;vertical-align:middle}
+  .badge.pos{background:var(--pos-bg);color:var(--pos)}
+  .badge.neg{background:var(--neg-bg);color:var(--neg)}
+  .badge.g{background:var(--gold-bg);color:#7a5e22}
+
+  /* mini mockups */
+  .mock{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+  .nw{background:var(--pine);border-radius:14px;padding:20px 22px;color:#eef2ee}
+  .nw .lbl{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:#8fb0a0}
+  .nw .big{font-family:"JetBrains Mono",monospace;font-size:1.9rem;font-weight:600;color:#fff;margin:6px 0 2px}
+  .statrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+  .stat .k{font-family:"JetBrains Mono",monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .stat .v{font-family:"JetBrains Mono",monospace;font-size:1.05rem;font-weight:600;margin-top:3px}
+  .tree{font-family:"JetBrains Mono",monospace;font-size:.82rem;line-height:1.9;color:var(--ink)}
+  .tree .p{color:var(--pine)}
+  .tree .c{color:var(--muted);padding-left:20px}
+  .signin{max-width:300px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center}
+  .signin .fld{text-align:left;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:var(--faint);margin:14px 0 5px}
+  .signin .inp{height:38px;border:1px solid var(--border-strong);border-radius:9px;background:var(--surface-2)}
+  .signin .btn{margin-top:18px;background:var(--pine);color:#f1efe4;border-radius:9px;padding:11px;font-family:"Hanken Grotesk",sans-serif;font-weight:600;font-size:.9rem}
+
+  footer.site{border-top:1px solid var(--border);max-width:var(--maxw);margin:0 auto;padding:26px 28px 50px;font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+
+  @media(max-width:760px){.g2,.g3,.g4,.statrow{grid-template-columns:1fr}header.site h1{font-size:2.05rem}.head-inner{padding:34px 20px 24px}main{padding:32px 20px 40px}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="glow"></div>
+  <div class="head-inner">
+    <div class="wordmark"><span class="leaf">T</span> Tally</div>
+    <div class="eyebrow">Product · Design System</div>
+    <h1>A quiet ledger for one person's money</h1>
+    <p class="lede">Self-hosted personal finance tracking. Record what comes in, what goes out, and what you hold — Tally shows where the money goes, what's losing value, and how much you actually keep.</p>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" aria-controls="p-overview">Overview</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p-scope" tabindex="-1">Scope</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p-how" tabindex="-1">How It Works</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p-flows" tabindex="-1">Workflows</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p-ui" tabindex="-1">Sample UI</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p-insights" tabindex="-1">Insights</button>
+  </div>
+</nav>
+
+<main>
+  <!-- OVERVIEW -->
+  <section class="panel active" id="p-overview" role="tabpanel">
+    <div class="section-eyebrow">What Tally is</div>
+    <h2 class="panel-title">Money you can see clearly</h2>
+    <p class="sub">Tally is a single-owner tracker you run on your own server. Everything is entered by hand, on purpose — no bank sync to break, no ads, no AI telling you what to do. Just an honest picture of your accounts.</p>
+
+    <div class="grid g4">
+      <div class="card"><div class="kicker">Principle</div><h3>Manual by design</h3><p>You type what happened. That friction is the feature — it keeps you close to your money instead of skimming a feed.</p></div>
+      <div class="card"><div class="kicker">Principle</div><h3>One currency</h3><p>USD only. No exchange rates, no conversion drift, no dual-currency reporting to reconcile.</p></div>
+      <div class="card"><div class="kicker">Principle</div><h3>Yours to host</h3><p>Runs on your own VM behind your own TLS. Your ledger never leaves infrastructure you control.</p></div>
+      <div class="card"><div class="kicker">Principle</div><h3>Truth over guesses</h3><p>Every number on the dashboard is computed from what you recorded. Nothing is estimated or inferred.</p></div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card feature">
+        <div class="kicker" style="color:var(--gold-soft)">The stack</div>
+        <h3>Built to last, small enough to own</h3>
+        <p>A NestJS API and a Next.js front end share a Postgres database through Prisma. The whole thing ships as Docker Compose behind Caddy — deployable to a single always-free ARM VM.</p>
+        <p class="num" style="font-size:.82rem;color:#9fc0af">Next.js · NestJS · Prisma · PostgreSQL · Docker · Caddy</p>
+      </div>
+      <div class="card">
+        <div class="kicker">Roadmap</div>
+        <table class="data">
+          <tr><th>Version</th><th>Adds</th></tr>
+          <tr><td><span class="badge g">v1</span></td><td>Core spine — accounts, transactions, categories, transfers, dashboard, CSV export</td></tr>
+          <tr><td><span class="badge">v2</span></td><td>Per-category monthly budgets</td></tr>
+          <tr><td><span class="badge">v3</span></td><td>Investment lots, cost basis, realized/unrealized gains, XIRR</td></tr>
+          <tr><td><span class="badge">v4</span></td><td>Row-level security promoted to active enforcement</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCOPE -->
+  <section class="panel" id="p-scope" role="tabpanel">
+    <div class="section-eyebrow">Where the line is</div>
+    <h2 class="panel-title">What v1 does, and what it deliberately doesn't</h2>
+    <p class="sub">v1 is the tracking spine — everything needed to record money and read it back. Anything that adds modelling complexity waits for a later version with a clear reason.</p>
+
+    <div class="grid g2">
+      <div class="card">
+        <div class="kicker" style="color:var(--pos)">In v1</div>
+        <ul class="clean">
+          <li>Accounts of every kind, cash-flow or manually valued</li>
+          <li>Income and expense transactions against categories</li>
+          <li>Transfers between your own accounts</li>
+          <li>Editable categories with one level of nesting</li>
+          <li>A dashboard: net worth, spending, savings rate</li>
+          <li>Filtered CSV export of your transactions</li>
+          <li>Single-owner accounts on a multi-tenant foundation</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="kicker" style="color:var(--neg)">Not in v1</div>
+        <ul class="clean no">
+          <li>Bank connections or automatic imports</li>
+          <li>Any currency other than USD</li>
+          <li>Budgets — those arrive in v2</li>
+          <li>Lot-level investment tracking — v3</li>
+          <li>Shared household or organisation books</li>
+          <li>Mobile apps — the web UI is responsive instead</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <h3>One owner today, many tenants tomorrow</h3>
+      <p>Tally is used by one person, but it is multi-tenant from the first migration. Every domain row carries a <code class="inline">userId</code> from day one, and per-user isolation is enforced in application code now. Postgres row-level security policies are written in v1 but left dormant; v4 simply switches them on. That means opening Tally to other people later is additive — never a rewrite.</p>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="panel" id="p-how" role="tabpanel">
+    <div class="section-eyebrow">The model</div>
+    <h2 class="panel-title">Four ideas hold the whole app together</h2>
+    <p class="sub">Accounts, categories, transactions, and valuations. Get these right and everything the dashboard shows falls out of them cleanly.</p>
+
+    <div class="grid g2">
+      <div class="card">
+        <h3>Accounts come in two flavours</h3>
+        <p><strong>Flow-derived</strong> accounts — cash, bank — carry a balance that is the running sum of their transactions. Money is real because you can trace every dollar.</p>
+        <p><strong>Manually valued</strong> accounts — investments, the microloan book — hold a value you can't compute from receipts. Their balance is the <em>latest snapshot</em> you record, nothing else.</p>
+      </div>
+      <div class="card">
+        <h3>Transfers are movement, not spending</h3>
+        <p>Moving money between your own accounts isn't income and isn't an expense. In Tally a transfer is a single record with a source and a destination and no category.</p>
+        <p>Because of that, it never lands in a spending report and never double-counts your net worth. The money just changed pockets.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <h3>Categories: a starter set you're free to bend</h3>
+      <p>New accounts begin seeded with fourteen sensible categories. Keep them, rename them, delete them — they're yours. One level of nesting lets you roll detail up: a <em>Shopping</em> parent can hold <em>Clothes</em>, <em>Electronics</em>, and <em>Accessories</em>, and reports total the children under the parent.</p>
+      <div style="margin-top:14px">
+        <div class="mono" style="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:6px">Expense</div>
+        <div class="chips">
+          <span class="chip">Rent</span><span class="chip">Groceries</span><span class="chip">Transport</span><span class="chip">Eating out</span><span class="chip">Utilities</span><span class="chip">Data &amp; airtime</span><span class="chip">Shopping</span><span class="chip">Health</span><span class="chip">Entertainment</span><span class="chip">Other</span>
+        </div>
+        <div class="mono" style="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:12px 0 6px">Income</div>
+        <div class="chips">
+          <span class="chip inc">Salary</span><span class="chip inc">Freelance</span><span class="chip inc">Loan interest</span><span class="chip inc">Gifts</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <h3>The microloan book, kept simple</h3>
+      <p>Lending money out is a business with its own system. Tally doesn't track individual loans — it holds a single manually-valued <em>Microloans</em> account standing for your deployed principal. Interest you receive is booked as ordinary income on the day it lands, so it never gets double-counted against the principal. Once a month you record a fresh valuation and the account's balance snaps to it.</p>
+    </div>
+  </section>
+
+  <!-- WORKFLOWS -->
+  <section class="panel" id="p-flows" role="tabpanel">
+    <div class="section-eyebrow">Day to day</div>
+    <h2 class="panel-title">The handful of things you'll actually do</h2>
+    <p class="sub">Most days it's one quick entry. Once a month there's a little upkeep. Exporting is there when you want your data elsewhere.</p>
+
+    <div class="grid g3">
+      <div class="card">
+        <h3>Record a transaction</h3>
+        <ol class="steps">
+          <li>Open quick-add from anywhere</li>
+          <li>Pick expense, income, or transfer</li>
+          <li>Enter the amount and account</li>
+          <li>Choose a category (not for transfers)</li>
+          <li>Save — the dashboard updates</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Monthly valuation</h3>
+        <ol class="steps">
+          <li>Read the balance from your loan or investment system</li>
+          <li>Open the valued account</li>
+          <li>Record a snapshot for the date</li>
+          <li>Net worth reflects the new value</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Export to CSV</h3>
+        <ol class="steps">
+          <li>Filter the transactions you want</li>
+          <li>Trigger export</li>
+          <li>Download a clean RFC-4180 file</li>
+          <li>Money stays exact, as strings</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- SAMPLE UI -->
+  <section class="panel" id="p-ui" role="tabpanel">
+    <div class="section-eyebrow">Look and feel</div>
+    <h2 class="panel-title">Fraunces headlines, Grotesk prose, Mono for every number</h2>
+    <p class="sub">Deep pine and muted gold on a cool off-white. Money and data always render in JetBrains Mono with tabular figures so columns line up. See <code class="inline">tally-dashboard.html</code> for the full-fidelity screen.</p>
+
+    <div class="grid g2">
+      <div class="mock">
+        <div class="mono" style="font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:10px">Dashboard preview</div>
+        <div class="nw">
+          <div class="lbl">Net worth</div>
+          <div class="big">$48,120.00</div>
+          <div class="mono" style="font-size:.72rem;color:#9fc0af">across 5 accounts</div>
+        </div>
+        <div class="statrow">
+          <div class="stat"><div class="k">Income</div><div class="v" style="color:var(--pos)">$4,200</div></div>
+          <div class="stat"><div class="k">Expenses</div><div class="v" style="color:var(--neg)">$2,480</div></div>
+          <div class="stat"><div class="k">Saved</div><div class="v">$1,720</div></div>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mono" style="font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:10px">Categories — flat vs nested</div>
+        <div class="tree">
+          <div class="p">▸ Groceries</div>
+          <div class="p">▸ Transport</div>
+          <div class="p">▾ Shopping</div>
+          <div class="c">• Clothes</div>
+          <div class="c">• Electronics</div>
+          <div class="c">• Accessories</div>
+          <div class="p">▸ Health</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:20px">
+      <div class="mock">
+        <div class="mono" style="font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:10px">Sign in</div>
+        <div class="signin">
+          <div class="wordmark" style="color:var(--pine);justify-content:center;margin-bottom:4px"><span class="leaf">T</span> Tally</div>
+          <div class="mono" style="font-size:.72rem;color:var(--faint)">Welcome back</div>
+          <div class="fld">Email</div><div class="inp"></div>
+          <div class="fld">Password</div><div class="inp"></div>
+          <div class="btn">Sign in</div>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mono" style="font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:10px">Recent activity</div>
+        <table class="data">
+          <tr><th>Item</th><th>Category</th><th style="text-align:right">Amount</th></tr>
+          <tr><td>Salary</td><td><span class="badge pos">Income</span></td><td class="n" style="color:var(--pos)">+3,000.00</td></tr>
+          <tr><td>Groceries</td><td>Groceries</td><td class="n" style="color:var(--neg)">−82.40</td></tr>
+          <tr><td>To Savings</td><td><span class="badge g">Transfer</span></td><td class="n">500.00</td></tr>
+          <tr><td>Loan interest</td><td><span class="badge pos">Income</span></td><td class="n" style="color:var(--pos)">+240.00</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSIGHTS -->
+  <section class="panel" id="p-insights" role="tabpanel">
+    <div class="section-eyebrow">Reading it back</div>
+    <h2 class="panel-title">What the dashboard actually tells you</h2>
+    <p class="sub">Every figure here is arithmetic on what you recorded — a computed fact, never a recommendation. Tally has no advisor and no smart insights; it just does the sums faithfully.</p>
+
+    <div class="grid g2">
+      <div class="card"><div class="kicker">Net worth</div><h3>Everything you hold, in one line</h3><p>The sum of flow-derived balances and the latest snapshot of each valued account. Transfers between your own accounts never move it.</p></div>
+      <div class="card"><div class="kicker">Savings rate</div><h3>How much of your income you kept</h3><p>Income minus expenses, as a share of income. "Kept 41% this month" is a derived stat — plain division, not a nudge.</p></div>
+      <div class="card"><div class="kicker">Spending by category</div><h3>Where it went, rolled up</h3><p>Expenses grouped by category for the period, with child categories totalled under their parent so the picture stays legible.</p></div>
+      <div class="card"><div class="kicker">Spotting losses</div><h3>What's quietly shrinking</h3><p>Valued accounts trending down across snapshots surface the losses you asked Tally to help you find in the first place.</p></div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <span>Tally — Design System</span>
+  <span>Fraunces · Hanken Grotesk · JetBrains Mono · Pine &amp; Gold</span>
+</footer>
+
+<script>
+  (function(){
+    var tabs=[].slice.call(document.querySelectorAll('.tab'));
+    var panels=[].slice.call(document.querySelectorAll('.panel'));
+    function sel(i,focus){
+      tabs.forEach(function(t,j){t.setAttribute('aria-selected',j===i);t.tabIndex=j===i?0:-1;});
+      panels.forEach(function(p,j){p.classList.toggle('active',j===i);});
+      if(focus)tabs[i].focus();
+      window.scrollTo({top:0,behavior:'auto'});
+    }
+    tabs.forEach(function(t,i){
+      t.addEventListener('click',function(){sel(i,false);});
+      t.addEventListener('keydown',function(e){
+        if(e.key==='ArrowRight'){e.preventDefault();sel((i+1)%tabs.length,true);}
+        if(e.key==='ArrowLeft'){e.preventDefault();sel((i-1+tabs.length)%tabs.length,true);}
+        if(e.key==='Home'){e.preventDefault();sel(0,true);}
+        if(e.key==='End'){e.preventDefault();sel(tabs.length-1,true);}
+      });
+    });
+  })();
+</script>
+</body>
+</html>

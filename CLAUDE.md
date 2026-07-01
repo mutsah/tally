@@ -34,6 +34,40 @@ Next.js (App Router) + Tailwind. Deploy: Docker Compose + Caddy on an Oracle Alw
 - **Manually-valued accounts** (investments, microloans): balance = latest `AccountValuation`,
   not transaction flow. Microloan interest is recorded as income, never derived from balance.
 
+## Frontend — locked decisions (apps/web)
+
+Canonical references live in docs/: tally-design.html (design system), tally-dashboard.html
+(canonical dashboard layout), tally-engineering-spec.html (engineering handoff). Read them
+for any detail not covered here.
+
+- **Framework:** Next.js App Router. React Server Components by default; client components
+  only where interaction requires. Route groups (auth)/(app). Icons: lucide-react.
+- **UI kit:** shadcn/ui (Radix + Tailwind + CSS variables), components vendored into
+  components/ui and owned in-repo — NOT a runtime dependency. The default look (zinc / Inter
+  / uniform radii) is always overridden by the Tally tokens below; never ship shadcn defaults.
+- **Session (BFF):** Next.js route handlers proxy the Nest auth endpoints. Access + refresh
+  JWTs live in httpOnly, SameSite cookies; the browser never holds the raw token. Middleware
+  and server components read the session server-side. F1 inspects how authbp emits tokens
+  and adapts.
+- **Data layer:** TanStack Query with an explicit cache-invalidation map. A transaction
+  mutation always invalidates ['transactions'], ['dashboard'], ['accounts'].
+- **API client:** typed; money stays a string end to end (never parsed to float); single
+  API_BASE env.
+
+### Design tokens — source of truth
+
+Fonts: Fraunces (display) · Hanken Grotesk (body) · JetBrains Mono (numbers/money/code).
+
+--bg:#eef0e9; --surface:#fbfaf6; --surface-2:#f4f2ec;
+--pine:#1e3a32; --pine-deep:#13241d; --pine-soft:#2c4a40; --pine-line:#274137;
+--gold:#a9802f; --gold-soft:#c19a4d; --gold-bg:rgba(169,128,47,0.12);
+--ink:#1b2420; --muted:#5b6a62; --faint:#8a968f;
+--border:#e3e0d5; --border-strong:#d6d2c4;
+--pos:#2f7d57; --pos-bg:rgba(47,125,87,0.12);
+--neg:#a8503e; --neg-bg:rgba(168,80,62,0.10);
+--radius:18px; --radius-sm:12px;
+--shadow:0 16px 36px -26px rgba(19,36,29,0.55);
+
 ## v1 scope — build only this
 Auth (from boilerplate) → per-user tenancy → accounts → categories → transactions/transfers →
 valuations → dashboard → CSV export. Frontend and deployment follow. Do NOT build budgets,
@@ -49,6 +83,6 @@ investment lots/cost-basis/XIRR, or org/workspace tenancy — those are out of s
   finding before proceeding.
 
 ## Design references (frontend phase)
-`tally-dashboard.html` is the canonical UI layout; `tally-design.html` and
-`tally-engineering-spec.html` are the design and engineering references. There is no AI
-assistant / insights / recommendations feature in Tally.
+The canonical design/engineering references live in `docs/` and are named under
+**Frontend — locked decisions (apps/web)** above — that is the single source of truth. There is
+no AI assistant / insights / recommendations feature in Tally.

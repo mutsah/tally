@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tally — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef0e9;
+    --surface:#fbfaf6;
+    --surface-2:#f4f2ec;
+    --pine:#1e3a32;
+    --pine-deep:#13241d;
+    --pine-soft:#2c4a40;
+    --pine-line:#274137;
+    --gold:#a9802f;
+    --gold-soft:#c19a4d;
+    --gold-bg:rgba(169,128,47,0.12);
+    --ink:#1b2420;
+    --muted:#5b6a62;
+    --faint:#8a968f;
+    --border:#e3e0d5;
+    --border-strong:#d6d2c4;
+    --pos:#2f7d57;
+    --pos-bg:rgba(47,125,87,0.12);
+    --neg:#a8503e;
+    --neg-bg:rgba(168,80,62,0.10);
+    --radius:18px;
+    --radius-sm:12px;
+    --shadow:0 16px 36px -26px rgba(19,36,29,0.55);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:15px;line-height:1.55;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  ::selection{background:var(--gold-bg);}
+  .mono{font-family:"JetBrains Mono",monospace;}
+  .num{font-family:"JetBrains Mono",monospace;font-feature-settings:"tnum";}
+  svg{display:block}
+  button{font-family:inherit;cursor:pointer}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px;}
+
+  .layout{display:grid;grid-template-columns:250px 1fr;min-height:100vh;}
+
+  /* =================== SIDEBAR =================== */
+  .sidebar{
+    background:var(--pine);color:#d6e0d8;display:flex;flex-direction:column;
+    padding:22px 16px 18px;position:sticky;top:0;height:100vh;gap:6px;
+  }
+  .brand{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 18px;}
+  .brand .mk{display:flex;align-items:center;gap:10px;font-family:"Fraunces",serif;font-weight:600;font-size:1.25rem;color:#f3f1e7;letter-spacing:.01em;}
+  .brand .leaf{width:26px;height:26px;border-radius:8px;background:var(--gold);display:flex;align-items:center;justify-content:center;color:var(--pine-deep);}
+  .brand .clp{color:#7f968b;display:flex;}
+  .navgroup{padding:14px 8px 4px;}
+  .navgroup .gl{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:#6f857a;margin-bottom:6px;}
+  .nav a{
+    display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:10px;
+    color:#bcccc1;font-size:.9rem;font-weight:500;text-decoration:none;margin-bottom:2px;transition:background .15s,color .15s;
+  }
+  .nav a svg{width:18px;height:18px;flex:none;opacity:.85}
+  .nav a:hover{background:rgba(255,255,255,0.06);color:#eef3ee;}
+  .nav a.on{background:var(--gold);color:var(--pine-deep);font-weight:600;box-shadow:0 8px 18px -10px rgba(169,128,47,0.8);}
+  .nav a.on svg{opacity:1}
+
+  .qa-widget{
+    margin-top:auto;background:var(--pine-soft);border:1px solid var(--pine-line);border-radius:14px;padding:14px;
+  }
+  .qa-widget .qh{display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:600;color:#eef3ee;margin-bottom:10px;}
+  .qa-widget .qh .pulse{width:7px;height:7px;border-radius:50%;background:var(--gold-soft);box-shadow:0 0 0 3px rgba(193,154,77,0.18);}
+  .qa-input{display:flex;align-items:center;gap:8px;background:var(--pine-deep);border:1px solid var(--pine-line);border-radius:10px;padding:8px 10px;margin-bottom:9px;}
+  .qa-input span{font-family:"JetBrains Mono",monospace;color:#9fb3a6;font-size:.8rem;}
+  .qa-input .amt{color:#f3f1e7;font-weight:600;}
+  .qa-input .go{margin-left:auto;width:22px;height:22px;border-radius:7px;background:var(--gold);color:var(--pine-deep);display:flex;align-items:center;justify-content:center;}
+  .qa-chips{display:flex;gap:6px;}
+  .qa-chips span{flex:1;text-align:center;font-family:"JetBrains Mono",monospace;font-size:.66rem;color:#bcccc1;background:rgba(255,255,255,0.05);border:1px solid var(--pine-line);border-radius:8px;padding:6px 0;}
+
+  /* =================== CONTENT =================== */
+  .content{padding:24px 30px 40px;min-width:0;}
+  .topbar{display:flex;align-items:center;gap:18px;margin-bottom:24px;}
+  .topbar .who{display:flex;align-items:center;gap:13px;min-width:0;}
+  .avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(150deg,var(--pine-soft),var(--pine));color:#f3f1e7;display:flex;align-items:center;justify-content:center;font-family:"Fraunces",serif;font-weight:600;font-size:1.1rem;flex:none;border:2px solid var(--surface);box-shadow:var(--shadow);}
+  .topbar h1{font-family:"Fraunces",serif;font-weight:600;font-size:1.4rem;margin:0;letter-spacing:-0.01em;display:flex;align-items:center;gap:8px;}
+  .topbar .sub{color:var(--muted);font-size:.86rem;margin:1px 0 0;}
+  .topbar .tools{margin-left:auto;display:flex;align-items:center;gap:10px;}
+  .search{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 13px;color:var(--faint);min-width:230px;}
+  .search input{border:none;background:none;outline:none;font-family:inherit;font-size:.86rem;color:var(--ink);width:100%;}
+  .iconbtn{width:42px;height:42px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--pine);display:flex;align-items:center;justify-content:center;position:relative;}
+  .iconbtn .dot{position:absolute;top:9px;right:10px;width:7px;height:7px;border-radius:50%;background:var(--gold);border:1.5px solid var(--surface);}
+
+  /* main grid */
+  .main{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;align-items:start;}
+  .col{display:flex;flex-direction:column;gap:18px;min-width:0;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;}
+  .card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .card-h h3{font-family:"Hanken Grotesk";font-weight:700;font-size:1rem;margin:0;}
+  .viewall{font-size:.8rem;color:var(--gold);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:3px;}
+  .drop{display:inline-flex;align-items:center;gap:7px;font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:6px 11px;}
+
+  /* feature card (pine) */
+  .feature{background:linear-gradient(155deg,var(--pine) 0%,var(--pine-deep) 100%);color:#e7efe8;border:none;position:relative;overflow:hidden;}
+  .feature::after{content:"";position:absolute;right:-60px;top:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(193,154,77,0.16),transparent 68%);}
+  .feature .fl{display:flex;align-items:center;gap:8px;font-size:.82rem;color:#a8bdb0;position:relative;}
+  .feature .big{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:2.55rem;letter-spacing:-0.02em;margin:10px 0 14px;color:#fbfaf6;position:relative;line-height:1;}
+  .feature .big .cents{font-size:1.4rem;color:#9fb3a6;}
+  .chgpill{display:inline-flex;align-items:center;gap:5px;font-family:"JetBrains Mono",monospace;font-size:.72rem;font-weight:600;padding:5px 10px;border-radius:999px;}
+  .chgpill.up{background:rgba(47,125,87,0.22);color:#9fe0bb;}
+  .feature .vs{font-size:.76rem;color:#90a79a;margin-left:9px;}
+
+  /* stat cards */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  @media(max-width:1180px){.stats{grid-template-columns:1fr;}}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:15px 16px;}
+  .stat .si{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted);margin-bottom:11px;}
+  .stat .ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;}
+  .ic.green{background:var(--pos-bg);color:var(--pos);} .ic.red{background:var(--neg-bg);color:var(--neg);} .ic.gold{background:var(--gold-bg);color:var(--gold);}
+  .stat .sv{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:1.2rem;color:var(--ink);letter-spacing:-0.01em;}
+  .stat .sv .cents{font-size:.78rem;color:var(--faint);}
+  .stat .sc{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:.72rem;}
+  .tag{display:inline-flex;align-items:center;gap:3px;font-family:"JetBrains Mono",monospace;font-weight:600;padding:2px 7px;border-radius:6px;}
+  .tag.up{background:var(--pos-bg);color:var(--pos);} .tag.dn{background:var(--neg-bg);color:var(--neg);}
+  .sc .lbl{color:var(--faint);}
+
+  /* spending overview */
+  .spend{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;}
+  @media(max-width:620px){.spend{grid-template-columns:1fr;}}
+  .donut{position:relative;width:172px;height:172px;flex:none;margin:0 auto;}
+  .donut .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  .donut .center .cl{font-family:"JetBrains Mono",monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);}
+  .donut .center .cv{font-family:"Fraunces",serif;font-weight:600;font-size:.98rem;color:var(--pine);margin-top:2px;line-height:1.15;max-width:96px;}
+  .totspent{font-size:.76rem;color:var(--muted);}
+  .totspent .v{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:1.35rem;color:var(--ink);display:block;margin-top:2px;}
+  .catlist{display:flex;flex-direction:column;gap:2px;}
+  .cat{display:grid;grid-template-columns:14px 1fr auto auto;align-items:center;gap:11px;padding:7px 0;border-bottom:1px solid var(--border);}
+  .cat:last-child{border-bottom:none;}
+  .cat .cd{width:10px;height:10px;border-radius:3px;}
+  .cat .cn{font-size:.86rem;color:var(--ink);}
+  .cat .ca{font-family:"JetBrains Mono",monospace;font-size:.82rem;color:var(--muted);}
+  .cat .cp{font-family:"JetBrains Mono",monospace;font-size:.78rem;font-weight:600;color:var(--pine);min-width:38px;text-align:right;}
+
+  /* highlight card (pine) */
+  .hl{background:linear-gradient(155deg,var(--pine-soft) 0%,var(--pine-deep) 100%);color:#e7efe8;border:none;position:relative;overflow:hidden;}
+  .hl .ico{position:absolute;right:16px;bottom:10px;color:rgba(193,154,77,0.30);}
+  .hl .hk{display:flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-soft);}
+  .hl .ht{font-family:"Fraunces",serif;font-weight:500;font-size:1.18rem;line-height:1.3;margin:11px 0 16px;max-width:23ch;position:relative;}
+  .hl .ht b{color:#fff;font-weight:600;}
+  .hl .hb{display:inline-flex;align-items:center;gap:7px;background:var(--gold);color:var(--pine-deep);border:none;border-radius:10px;padding:9px 15px;font-weight:600;font-size:.85rem;position:relative;}
+
+  /* quick actions */
+  .qgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  .qact{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-2);color:var(--ink);transition:border-color .15s,transform .1s;}
+  .qact:hover{border-color:var(--gold);transform:translateY(-1px);}
+  .qact .qi{width:38px;height:38px;border-radius:11px;background:var(--pine);color:#f3f1e7;display:flex;align-items:center;justify-content:center;}
+  .qact .ql{font-size:.74rem;color:var(--muted);text-align:center;line-height:1.2;}
+
+  /* recent transactions */
+  .tx{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);}
+  .tx:last-child{border-bottom:none;}
+  .tx .tav{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none;font-family:"Fraunces",serif;font-weight:600;font-size:.95rem;}
+  .tav.exp{background:var(--neg-bg);color:var(--neg);} .tav.inc{background:var(--pos-bg);color:var(--pos);} .tav.mov{background:var(--gold-bg);color:var(--gold);}
+  .tx .tinfo{min-width:0;flex:1;}
+  .tx .tn{font-size:.88rem;font-weight:600;color:var(--ink);}
+  .tx .tm{font-family:"JetBrains Mono",monospace;font-size:.66rem;color:var(--faint);letter-spacing:.03em;margin-top:1px;}
+  .tx .tamt{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:.9rem;text-align:right;}
+  .tamt.pos{color:var(--pos);} .tamt.neg{color:var(--neg);} .tamt.mov{color:var(--pine-soft);}
+
+  /* accounts strip */
+  .accts{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;}
+  @media(max-width:620px){.accts{grid-template-columns:1fr;}}
+  .acc{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-2);}
+  .acc .al{display:flex;align-items:center;gap:11px;min-width:0;}
+  .acc .ai{width:34px;height:34px;border-radius:10px;background:var(--pine);color:#f3f1e7;display:flex;align-items:center;justify-content:center;flex:none;}
+  .acc .ai.val{background:var(--gold);color:var(--pine-deep);}
+  .acc .an{font-size:.88rem;font-weight:600;color:var(--ink);}
+  .acc .at{font-family:"JetBrains Mono",monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-top:1px;}
+  .acc .ab{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:.92rem;color:var(--pine);}
+
+  /* responsive */
+  @media(max-width:980px){
+    .layout{grid-template-columns:1fr;}
+    .sidebar{position:fixed;left:-260px;}
+    .main{grid-template-columns:1fr;}
+    .search{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mk">
+        <span class="leaf"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M19 9l-5 5-4-4-3 3"/></svg></span>
+        Tally
+      </div>
+      <span class="clp"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/><line x1="3" y1="6" x2="3" y2="18"/></svg></span>
+    </div>
+
+    <nav class="nav">
+      <div class="navgroup">
+        <div class="gl">Main</div>
+        <a class="on" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></svg>Dashboard</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2.5"/><path d="M2 10h20"/><circle cx="17.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg>Accounts</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11"/><path d="M15 4l3 3-3 3"/><path d="M17 17H6"/><path d="M9 14l-3 3 3 3"/></svg>Transactions</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V4a2 2 0 0 1 2-2h8z"/><circle cx="7" cy="7" r="1.3"/></svg>Categories</a>
+      </div>
+
+      <div class="navgroup">
+        <div class="gl">Manage</div>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="12"/><line x1="10" y1="21" x2="10" y2="5"/><line x1="16" y1="21" x2="16" y2="9"/><line x1="2" y1="21" x2="22" y2="21"/></svg>Valuations</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export</a>
+      </div>
+
+      <div class="navgroup">
+        <div class="gl">Others</div>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Settings</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Help</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log out</a>
+      </div>
+    </nav>
+
+    <div class="qa-widget">
+      <div class="qh"><span class="pulse"></span>Quick add</div>
+      <div class="qa-input"><span>$</span><span class="amt mono">84.20</span><span class="go"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></div>
+      <div class="qa-chips"><span>Expense</span><span>Income</span><span>Transfer</span></div>
+    </div>
+  </aside>
+
+  <!-- ============ CONTENT ============ -->
+  <main class="content">
+    <div class="topbar">
+      <div class="who">
+        <div class="avatar">D</div>
+        <div>
+          <h1>Welcome back, Divine</h1>
+          <p class="sub">Here's where your money stands today.</p>
+        </div>
+      </div>
+      <div class="tools">
+        <div class="search">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input placeholder="Search transactions…" aria-label="Search">
+        </div>
+        <button class="iconbtn" aria-label="Notifications"><span class="dot"></span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </div>
+    </div>
+
+    <div class="main">
+
+      <!-- ===== LEFT COLUMN ===== -->
+      <div class="col">
+
+        <!-- Net worth feature -->
+        <div class="card feature">
+          <div class="fl">Net worth
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="opacity:.6"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <div class="big num">$11,460<span class="cents">.75</span></div>
+          <span class="chgpill up"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="8 7 17 7 17 16"/></svg>+5.2%</span>
+          <span class="vs">vs last month</span>
+        </div>
+
+        <!-- Spending overview -->
+        <div class="card">
+          <div class="card-h">
+            <h3>Spending overview</h3>
+            <span class="drop">This month <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          </div>
+          <p class="totspent">Total spent<span class="v num">$1,884.40</span></p>
+          <div class="spend" style="margin-top:14px">
+            <div class="donut">
+              <svg viewBox="0 0 42 42" width="172" height="172">
+                <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--surface-2)" stroke-width="5.4"></circle>
+                <g transform="rotate(-90 21 21)">
+                  <circle cx="21" cy="21" r="15.915" fill="none" stroke="#1e3a32" stroke-width="5.4" stroke-dasharray="48.8 51.2" stroke-dashoffset="0"></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="none" stroke="#a9802f" stroke-width="5.4" stroke-dasharray="25.8 74.2" stroke-dashoffset="-48.8"></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="none" stroke="#4a7a68" stroke-width="5.4" stroke-dasharray="15.1 84.9" stroke-dashoffset="-74.6"></circle>
+                  <circle cx="21" cy="21" r="15.915" fill="none" stroke="#c19a4d" stroke-width="5.4" stroke-dasharray="10.3 89.7" stroke-dashoffset="-89.7"></circle>
+                </g>
+              </svg>
+              <div class="center"><span class="cl">Top category</span><span class="cv">Rent</span></div>
+            </div>
+            <div class="catlist">
+              <div class="cat"><span class="cd" style="background:#1e3a32"></span><span class="cn">Rent</span><span class="ca num">$920.00</span><span class="cp">49%</span></div>
+              <div class="cat"><span class="cd" style="background:#a9802f"></span><span class="cn">Groceries</span><span class="ca num">$486.20</span><span class="cp">26%</span></div>
+              <div class="cat"><span class="cd" style="background:#4a7a68"></span><span class="cn">Shopping</span><span class="ca num">$285.00</span><span class="cp">15%</span></div>
+              <div class="cat"><span class="cd" style="background:#c19a4d"></span><span class="cn">Eating out</span><span class="ca num">$193.20</span><span class="cp">10%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accounts strip -->
+        <div class="card">
+          <div class="card-h">
+            <h3>Accounts</h3>
+            <a class="viewall" href="#">View all <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></a>
+          </div>
+          <div class="accts">
+            <div class="acc"><div class="al"><span class="ai"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2.5"/><path d="M2 10h20"/></svg></span><div><div class="an">Main bank</div><div class="at">Bank · derived</div></div></div><span class="ab num">$4,210.75</span></div>
+            <div class="acc"><div class="al"><span class="ai"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><path d="M21 11h-6a2 2 0 0 0 0 4h6z"/></svg></span><div><div class="an">Wallet</div><div class="at">Cash · derived</div></div></div><span class="ab num">$96.00</span></div>
+            <div class="acc"><div class="al"><span class="ai val"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="13"/><line x1="10" y1="20" x2="10" y2="5"/><line x1="16" y1="20" x2="16" y2="9"/></svg></span><div><div class="an">Investments</div><div class="at">Valued · snapshot</div></div></div><span class="ab num">$4,250.00</span></div>
+            <div class="acc"><div class="al"><span class="ai val"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><div><div class="an">Microloans</div><div class="at">Valued · principal</div></div></div><span class="ab num">$3,000.00</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== RIGHT COLUMN ===== -->
+      <div class="col">
+
+        <!-- Stat cards -->
+        <div class="stats">
+          <div class="stat">
+            <div class="si"><span class="ic green"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></span>Income</div>
+            <div class="sv num">$3,200<span class="cents">.00</span></div>
+            <div class="sc"><span class="tag up">+0.0%</span><span class="lbl">vs last month</span></div>
+          </div>
+          <div class="stat">
+            <div class="si"><span class="ic red"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></span>Expenses</div>
+            <div class="sv num">$1,884<span class="cents">.40</span></div>
+            <div class="sc"><span class="tag dn">+3.6%</span><span class="lbl">vs last month</span></div>
+          </div>
+          <div class="stat">
+            <div class="si"><span class="ic gold"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M5 5h9a3 3 0 0 1 0 6H7a3 3 0 0 0 0 6h10"/></svg></span>Saved</div>
+            <div class="sv num">$1,315<span class="cents">.60</span></div>
+            <div class="sc"><span class="tag up">+8.3%</span><span class="lbl">vs last month</span></div>
+          </div>
+        </div>
+
+        <!-- Highlight (was AI insight) -->
+        <div class="card hl">
+          <div class="ico"><svg width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v3M5 8H2M22 8h-3M12 22v-3"/><path d="M7 13a5 5 0 1 1 10 0c0 2-1.5 3-2 4H9c-.5-1-2-2-2-4z"/><path d="M9.5 21h5"/></svg></div>
+          <div class="hk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/></svg> This month</div>
+          <p class="ht">You kept <b>41% of your income</b> — $1,315.60 saved so far.</p>
+          <button class="hb">See breakdown <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></button>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="card">
+          <div class="card-h"><h3>Quick actions</h3></div>
+          <div class="qgrid">
+            <button class="qact"><span class="qi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span><span class="ql">Add expense</span></button>
+            <button class="qact"><span class="qi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></span><span class="ql">Add income</span></button>
+            <button class="qact"><span class="qi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11"/><path d="M15 4l3 3-3 3"/><path d="M17 17H6"/><path d="M9 14l-3 3 3 3"/></svg></span><span class="ql">Transfer</span></button>
+            <button class="qact"><span class="qi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-3h6l2 3h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="ql">Snapshot</span></button>
+          </div>
+        </div>
+
+        <!-- Recent transactions -->
+        <div class="card">
+          <div class="card-h">
+            <h3>Recent transactions</h3>
+            <a class="viewall" href="#">View all <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></a>
+          </div>
+          <div class="tx"><span class="tav exp">W</span><div class="tinfo"><div class="tn">Whole Foods</div><div class="tm">28 Jun · Main bank · Groceries</div></div><span class="tamt neg">−$84.20</span></div>
+          <div class="tx"><span class="tav mov">→</span><div class="tinfo"><div class="tn">To Investments</div><div class="tm">28 Jun · transfer</div></div><span class="tamt mov">$500.00</span></div>
+          <div class="tx"><span class="tav inc">S</span><div class="tinfo"><div class="tn">Salary</div><div class="tm">25 Jun · Main bank · Salary</div></div><span class="tamt pos">+$3,200.00</span></div>
+          <div class="tx"><span class="tav exp">U</span><div class="tinfo"><div class="tn">Uber</div><div class="tm">24 Jun · Main bank · Transport</div></div><span class="tamt neg">−$18.40</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tally — Engineering Spec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef0e9; --surface:#fbfaf6; --surface-2:#f4f2ec;
+    --pine:#1e3a32; --pine-deep:#13241d; --pine-soft:#2c4a40; --pine-line:#274137;
+    --gold:#a9802f; --gold-soft:#c19a4d; --gold-bg:rgba(169,128,47,0.12);
+    --ink:#1b2420; --muted:#5b6a62; --faint:#8a968f;
+    --border:#e3e0d5; --border-strong:#d6d2c4;
+    --pos:#2f7d57; --pos-bg:rgba(47,125,87,0.12);
+    --neg:#a8503e; --neg-bg:rgba(168,80,62,0.10);
+    --radius:18px; --radius-sm:12px;
+    --shadow:0 16px 36px -26px rgba(19,36,29,0.55);
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  h1,h2,h3,h4{font-family:"Fraunces",Georgia,serif;font-weight:600;line-height:1.15;color:var(--pine-deep);margin:0 0 .5em}
+  p{margin:0 0 1em}
+  a{color:var(--pine-soft);text-decoration:none;border-bottom:1px solid var(--border-strong)}
+  a:hover{color:var(--gold)}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  ::selection{background:var(--gold-bg)}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+
+  header.site{background:var(--pine);color:#f1efe4;border-bottom:1px solid var(--pine-deep);position:relative;overflow:hidden}
+  .head-inner{max-width:var(--maxw);margin:0 auto;padding:48px 28px 32px;position:relative;z-index:1}
+  .glow{position:absolute;right:-120px;top:-120px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(169,128,47,.22),transparent 70%)}
+  .wordmark{display:inline-flex;align-items:center;gap:9px;font-family:"Fraunces",serif;font-weight:600;font-size:1.05rem;color:#f1efe4;margin-bottom:26px}
+  .wordmark .leaf{width:22px;height:22px;border-radius:7px;background:var(--gold);display:flex;align-items:center;justify-content:center;color:var(--pine-deep);font-size:.85rem;font-weight:700}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:14px}
+  header.site h1{color:#f4f2ec;font-size:2.6rem;margin:0 0 .3em}
+  .lede{color:#c7d2c9;font-size:1.05rem;max-width:56ch;margin:0}
+
+  nav.tabs{position:sticky;top:0;z-index:20;background:var(--pine-deep);border-bottom:1px solid var(--pine-line)}
+  .tabs-inner{max-width:var(--maxw);margin:0 auto;display:flex;gap:2px;padding:0 18px;overflow-x:auto}
+  .tab{appearance:none;background:none;border:none;color:#9db0a6;font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:15px 15px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:#e7ede8}
+  .tab[aria-selected="true"]{color:#f4f2ec;border-bottom-color:var(--gold)}
+
+  main{max-width:var(--maxw);margin:0 auto;padding:44px 28px 40px}
+  .panel{display:none;animation:fade .4s ease}
+  .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .section-eyebrow{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+  h2.panel-title{font-size:1.9rem;margin-bottom:.35em}
+  h3.sub-h{font-size:1.25rem;margin:28px 0 12px}
+  .sub{color:var(--muted);max-width:64ch;margin-bottom:2em;font-size:1.02rem}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;box-shadow:var(--shadow);margin-bottom:18px}
+  .grid{display:grid;gap:16px;margin-bottom:18px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .card h3{font-size:1.1rem;margin-bottom:.4em}
+  .card .kicker{font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:7px}
+  .card p:last-child{margin-bottom:0}
+
+  pre{background:var(--pine-deep);color:#d7e2da;border-radius:var(--radius-sm);padding:18px 20px;overflow:auto;font-family:"JetBrains Mono",monospace;font-size:.76rem;line-height:1.65;margin:0 0 16px;border:1px solid var(--pine-line)}
+  pre .k{color:var(--gold-soft)}
+  pre .t{color:#9fd0b3}
+  pre .c{color:#7f968b;font-style:italic}
+  pre .s{color:#d8b26a}
+  pre .m{color:#c9d6cd}
+  code.inline{background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:1px 6px;font-family:"JetBrains Mono",monospace;font-size:.85em;color:#3d5249}
+
+  table.data{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:8px}
+  table.data th{text-align:left;font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:10px 12px;border-bottom:1px solid var(--border-strong)}
+  table.data td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.data tr:last-child td{border-bottom:none}
+  table.data td.mono,table.data th.mono{font-family:"JetBrains Mono",monospace}
+
+  .method{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.6rem;font-weight:600;letter-spacing:.04em;padding:3px 7px;border-radius:5px;margin-right:4px;color:#fff}
+  .m-get{background:#2f7d57}.m-post{background:#a9802f}.m-patch{background:#4a6b8a}.m-del{background:#a8503e}
+
+  .badge{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+  .badge.pk{background:var(--gold-bg);color:#7a5e22}
+  .badge.fk{background:var(--pos-bg);color:var(--pos)}
+  .badge.v{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+
+  /* ERD entity cards */
+  .erd{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .ent{background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;overflow:hidden}
+  .ent .hd{background:var(--pine);color:#f1efe4;font-family:"JetBrains Mono",monospace;font-size:.78rem;font-weight:600;padding:9px 12px;letter-spacing:.03em}
+  .ent ul{list-style:none;margin:0;padding:6px 0}
+  .ent li{display:flex;justify-content:space-between;gap:8px;padding:5px 12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:var(--muted)}
+  .ent li .ty{color:var(--faint)}
+  .ent li .fp{color:var(--gold);font-size:.58rem;align-self:center}
+
+  ul.clean{list-style:none;padding:0;margin:0}
+  ul.clean li{padding:9px 0 9px 22px;position:relative;border-bottom:1px solid var(--border);font-size:.95rem}
+  ul.clean li:last-child{border-bottom:none}
+  ul.clean li::before{content:"";position:absolute;left:2px;top:16px;width:7px;height:7px;border-radius:2px;background:var(--gold)}
+  ul.check li::before{content:"✓";background:none;color:var(--pos);font-family:"JetBrains Mono",monospace;font-size:.8rem;top:8px;left:0}
+
+  .note-box{background:var(--gold-bg);border:1px solid rgba(169,128,47,.3);border-radius:var(--radius-sm);padding:14px 18px;font-size:.9rem;color:#5c4718;margin-bottom:18px}
+  .feature{background:var(--pine);color:#eef2ee;border:none}
+  .feature h3,.feature .kicker{color:#f4f2ec}.feature .kicker{color:var(--gold-soft)}.feature p{color:#c2cec5}
+
+  footer.site{border-top:1px solid var(--border);max-width:var(--maxw);margin:0 auto;padding:26px 28px 50px;font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+
+  @media(max-width:760px){.g2,.g3,.erd{grid-template-columns:1fr}header.site h1{font-size:2rem}.head-inner{padding:34px 20px 24px}main{padding:32px 20px 40px}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="glow"></div>
+  <div class="head-inner">
+    <div class="wordmark"><span class="leaf">T</span> Tally</div>
+    <div class="eyebrow">Engineering · Handoff Spec</div>
+    <h1>Everything needed to build the spine</h1>
+    <p class="lede">The v1 contract — data model, API surface, front-end map, and the exact rules money must obey. Companion to <span class="mono" style="color:#c7d2c9">tally-design.html</span> and <span class="mono" style="color:#c7d2c9">tally-dashboard.html</span>.</p>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" aria-controls="p-overview">Overview</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p-db" tabindex="-1">Database</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p-api" tabindex="-1">API</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p-fe" tabindex="-1">Frontend</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p-flows" tabindex="-1">Workflows</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p-build" tabindex="-1">Build Plan</button>
+  </div>
+</nav>
+
+<main>
+  <!-- OVERVIEW -->
+  <section class="panel active" id="p-overview" role="tabpanel">
+    <div class="section-eyebrow">Architecture</div>
+    <h2 class="panel-title">One repo, two apps, one database</h2>
+    <p class="sub">A NestJS API and a Next.js front end live in an npm-workspace monorepo and share a Postgres database through Prisma. Money is a decimal end to end and is serialised as a string over the wire — it never touches a JavaScript number.</p>
+
+    <div class="grid g2">
+      <div class="card feature">
+        <div class="kicker">Request lifecycle</div>
+        <pre style="background:rgba(0,0,0,.18);border-color:var(--pine-line);margin-bottom:0"><span class="m">Browser (Next.js)
+  → BFF route handler  </span><span class="c">// attaches httpOnly cookie</span><span class="m">
+  → NestJS API
+      JwtAuthGuard      </span><span class="c">// resolves userId</span><span class="m">
+      TenantScopedService </span><span class="c">// id AND userId</span><span class="m">
+      Prisma → PostgreSQL
+  ← DecimalToString interceptor</span></pre>
+      </div>
+      <div class="card">
+        <div class="kicker">Stack</div>
+        <table class="data">
+          <tr><th>Layer</th><th>Choice</th></tr>
+          <tr><td>API</td><td class="mono">NestJS</td></tr>
+          <tr><td>Front end</td><td class="mono">Next.js · App Router</td></tr>
+          <tr><td>ORM</td><td class="mono">Prisma</td></tr>
+          <tr><td>Database</td><td class="mono">PostgreSQL</td></tr>
+          <tr><td>Auth</td><td class="mono">JWT · access + refresh</td></tr>
+          <tr><td>Deploy</td><td class="mono">Docker Compose · Caddy</td></tr>
+          <tr><td>Host</td><td class="mono">Oracle always-free ARM</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <h3 class="sub-h">Repository layout</h3>
+    <pre><span class="m">tally/
+├─ apps/
+│  ├─ api/           </span><span class="c"># NestJS — modeled on authbp---backend</span><span class="m">
+│  └─ web/           </span><span class="c"># Next.js App Router</span><span class="m">
+├─ .claude/          </span><span class="c"># governance: settings, skills, CLAUDE.md</span><span class="m">
+├─ docs/             </span><span class="c"># design.html · dashboard.html · engineering-spec.html</span><span class="m">
+├─ PLAN.md           </span><span class="c"># session-persistent progress tracker</span><span class="m">
+└─ package.json      </span><span class="c"># npm workspaces root</span></pre>
+
+    <h3 class="sub-h">Locked conventions</h3>
+    <div class="grid g3">
+      <div class="card"><div class="kicker">Money</div><p><code class="inline">Decimal @db.Decimal(18,2)</code>, serialised as a string. USD only, no currency column, no floats anywhere.</p></div>
+      <div class="card"><div class="kicker">Keys</div><p>UUID primary keys throughout. Every domain row carries a <code class="inline">userId</code> from the first migration.</p></div>
+      <div class="card"><div class="kicker">Tenancy</div><p>Per-user isolation in app code now via a <code class="inline">TenantScopedService</code> base. RLS written in v1, activated in v4.</p></div>
+    </div>
+
+    <h3 class="sub-h">Roadmap</h3>
+    <table class="data">
+      <tr><th>Version</th><th>Scope</th></tr>
+      <tr><td class="mono">v1</td><td>Core spine — accounts, transactions, categories, transfers, dashboard, CSV export. Multi-tenant foundation.</td></tr>
+      <tr><td class="mono">v2</td><td>Per-category monthly budgets.</td></tr>
+      <tr><td class="mono">v3</td><td>Investment tracking — lots, cost basis, realized/unrealized gains, XIRR.</td></tr>
+      <tr><td class="mono">v4</td><td>Row-level security policies promoted from dormant to active enforcement.</td></tr>
+    </table>
+  </section>
+
+  <!-- DATABASE -->
+  <section class="panel" id="p-db" role="tabpanel">
+    <div class="section-eyebrow">Data model</div>
+    <h2 class="panel-title">Six models, every row owner-tagged</h2>
+    <p class="sub">The domain is deliberately small. A single Transaction table also carries transfers; manually-valued accounts get their balance from AccountValuation snapshots rather than transaction flow.</p>
+
+    <h3 class="sub-h">Entity map</h3>
+    <div class="erd">
+      <div class="ent"><div class="hd">User</div><ul>
+        <li><span>id</span><span class="ty">uuid <span class="fp">PK</span></span></li>
+        <li><span>email</span><span class="ty">unique</span></li>
+        <li><span>passwordHash</span><span class="ty">string</span></li>
+        <li><span>displayName</span><span class="ty">string?</span></li>
+      </ul></div>
+      <div class="ent"><div class="hd">Account</div><ul>
+        <li><span>id</span><span class="ty">uuid <span class="fp">PK</span></span></li>
+        <li><span>userId</span><span class="ty">uuid <span class="fp">FK</span></span></li>
+        <li><span>name</span><span class="ty">string</span></li>
+        <li><span>kind</span><span class="ty">enum</span></li>
+        <li><span>isValued</span><span class="ty">bool</span></li>
+        <li><span>archivedAt</span><span class="ty">date?</span></li>
+      </ul></div>
+      <div class="ent"><div class="hd">Category</div><ul>
+        <li><span>id</span><span class="ty">uuid <span class="fp">PK</span></span></li>
+        <li><span>userId</span><span class="ty">uuid <span class="fp">FK</span></span></li>
+        <li><span>name</span><span class="ty">string</span></li>
+        <li><span>kind</span><span class="ty">enum</span></li>
+        <li><span>parentId</span><span class="ty">uuid? <span class="fp">FK</span></span></li>
+      </ul></div>
+      <div class="ent"><div class="hd">Transaction</div><ul>
+        <li><span>id</span><span class="ty">uuid <span class="fp">PK</span></span></li>
+        <li><span>userId</span><span class="ty">uuid <span class="fp">FK</span></span></li>
+        <li><span>kind</span><span class="ty">enum</span></li>
+        <li><span>amount</span><span class="ty">dec(18,2)</span></li>
+        <li><span>accountId</span><span class="ty">uuid <span class="fp">FK</span></span></li>
+        <li><span>toAccountId</span><span class="ty">uuid? <span class="fp">FK</span></span></li>
+        <li><span>categoryId</span><span class="ty">uuid? <span class="fp">FK</span></span></li>
+        <li><span>occurredAt</span><span class="ty">date</span></li>
+      </ul></div>
+      <div class="ent"><div class="hd">AccountValuation</div><ul>
+        <li><span>id</span><span class="ty">uuid <span class="fp">PK</span></span></li>
+        <li><span>userId</span><span class="ty">uuid <span class="fp">FK</span></span></li>
+        <li><span>accountId</span><span class="ty">uuid <span class="fp">FK</span></span></li>
+        <li><span>value</span><span class="ty">dec(18,2)</span></li>
+        <li><span>asOf</span><span class="ty">date</span></li>
+      </ul></div>
+      <div class="ent"><div class="hd">RefreshToken</div><ul>
+        <li><span>id</span><span class="ty">uuid <span class="fp">PK</span></span></li>
+        <li><span>userId</span><span class="ty">uuid <span class="fp">FK</span></span></li>
+        <li><span>tokenHash</span><span class="ty">unique</span></li>
+        <li><span>expiresAt</span><span class="ty">date</span></li>
+      </ul></div>
+    </div>
+
+    <div class="note-box" style="margin-top:18px"><strong>Transfer invariant:</strong> a transfer is one Transaction with <code class="inline">kind = TRANSFER</code>, both <code class="inline">accountId</code> (source) and <code class="inline">toAccountId</code> (destination) set, and <code class="inline">categoryId = null</code>. It is excluded from income and expense at query level, never post-filtered.</div>
+
+    <h3 class="sub-h">schema.prisma</h3>
+    <pre><span class="k">enum</span> <span class="t">AccountKind</span> { CASH BANK SAVINGS INVESTMENT MICROLOANS }
+<span class="k">enum</span> <span class="t">CategoryKind</span> { INCOME EXPENSE }
+<span class="k">enum</span> <span class="t">TransactionKind</span> { INCOME EXPENSE TRANSFER }
+
+<span class="k">model</span> <span class="t">Account</span> {
+  id         <span class="t">String</span>      <span class="k">@id @default</span>(uuid())
+  userId     <span class="t">String</span>
+  name       <span class="t">String</span>
+  kind       <span class="t">AccountKind</span>
+  isValued   <span class="t">Boolean</span>     <span class="k">@default</span>(false)   <span class="c">// INVESTMENT / MICROLOANS</span>
+  archivedAt <span class="t">DateTime</span>?
+  user              <span class="t">User</span>        <span class="k">@relation</span>(fields: [userId], references: [id], onDelete: Cascade)
+  transactions      <span class="t">Transaction</span>[] <span class="k">@relation</span>(<span class="s">"AccountTx"</span>)
+  incomingTransfers <span class="t">Transaction</span>[] <span class="k">@relation</span>(<span class="s">"ToAccountTx"</span>)
+  valuations        <span class="t">AccountValuation</span>[]
+  <span class="k">@@index</span>([userId])
+  <span class="k">@@index</span>([userId, kind])
+}
+
+<span class="k">model</span> <span class="t">Category</span> {
+  id       <span class="t">String</span>       <span class="k">@id @default</span>(uuid())
+  userId   <span class="t">String</span>
+  name     <span class="t">String</span>
+  kind     <span class="t">CategoryKind</span>
+  parentId <span class="t">String</span>?     <span class="c">// one level of nesting only</span>
+  parent   <span class="t">Category</span>?   <span class="k">@relation</span>(<span class="s">"Tree"</span>, fields: [parentId], references: [id])
+  children <span class="t">Category</span>[]  <span class="k">@relation</span>(<span class="s">"Tree"</span>)
+  <span class="k">@@index</span>([userId, parentId])
+}
+
+<span class="k">model</span> <span class="t">Transaction</span> {
+  id          <span class="t">String</span>          <span class="k">@id @default</span>(uuid())
+  userId      <span class="t">String</span>
+  kind        <span class="t">TransactionKind</span>
+  amount      <span class="t">Decimal</span>         <span class="k">@db.Decimal</span>(18, 2)
+  occurredAt  <span class="t">DateTime</span>
+  accountId   <span class="t">String</span>
+  toAccountId <span class="t">String</span>?         <span class="c">// TRANSFER only</span>
+  categoryId  <span class="t">String</span>?         <span class="c">// null for TRANSFER</span>
+  account   <span class="t">Account</span>  <span class="k">@relation</span>(<span class="s">"AccountTx"</span>,   fields: [accountId],   references: [id])
+  toAccount <span class="t">Account</span>? <span class="k">@relation</span>(<span class="s">"ToAccountTx"</span>, fields: [toAccountId], references: [id])
+  category  <span class="t">Category</span>? <span class="k">@relation</span>(fields: [categoryId], references: [id])
+  <span class="k">@@index</span>([userId, occurredAt])
+  <span class="k">@@index</span>([userId, accountId])
+  <span class="k">@@index</span>([userId, categoryId])
+}
+
+<span class="k">model</span> <span class="t">AccountValuation</span> {
+  id        <span class="t">String</span>   <span class="k">@id @default</span>(uuid())
+  userId    <span class="t">String</span>
+  accountId <span class="t">String</span>
+  value     <span class="t">Decimal</span>  <span class="k">@db.Decimal</span>(18, 2)
+  asOf      <span class="t">DateTime</span>
+  <span class="k">@@unique</span>([accountId, asOf])   <span class="c">// upsert-by-date monthly snapshot</span>
+  <span class="k">@@index</span>([accountId, asOf])
+}</pre>
+
+    <h3 class="sub-h">Deferred to v4 — row-level security</h3>
+    <pre><span class="c">-- written in v1, left dormant; v4 flips it on</span>
+<span class="k">ALTER TABLE</span> <span class="s">"Transaction"</span> <span class="k">ENABLE ROW LEVEL SECURITY</span>;
+<span class="k">CREATE POLICY</span> tenant_isolation <span class="k">ON</span> <span class="s">"Transaction"</span>
+  <span class="k">USING</span> (<span class="s">"userId"</span> = current_setting(<span class="s">'app.user_id'</span>)::uuid);</pre>
+  </section>
+
+  <!-- API -->
+  <section class="panel" id="p-api" role="tabpanel">
+    <div class="section-eyebrow">Surface</div>
+    <h2 class="panel-title">Endpoints, grouped by module</h2>
+    <p class="sub">Every route except register, login, refresh, and health is guarded. The authenticated <code class="inline">userId</code> scopes every query — no endpoint accepts a userId from the client.</p>
+
+    <h3 class="sub-h">Auth</h3>
+    <table class="data">
+      <tr><th>Route</th><th>Purpose</th></tr>
+      <tr><td class="mono"><span class="method m-post">POST</span>/auth/register</td><td>Create the owner; seeds 14 starter categories transactionally</td></tr>
+      <tr><td class="mono"><span class="method m-post">POST</span>/auth/login</td><td>Issue access + refresh tokens</td></tr>
+      <tr><td class="mono"><span class="method m-post">POST</span>/auth/refresh</td><td>Rotate refresh token, mint new access token</td></tr>
+      <tr><td class="mono"><span class="method m-post">POST</span>/auth/logout</td><td>Revoke the refresh token</td></tr>
+      <tr><td class="mono"><span class="method m-get">GET</span>/auth/me</td><td>Current user</td></tr>
+    </table>
+
+    <h3 class="sub-h">Accounts · Categories</h3>
+    <table class="data">
+      <tr><th>Route</th><th>Purpose</th></tr>
+      <tr><td class="mono"><span class="method m-get">GET</span>/accounts</td><td>List with computed balances</td></tr>
+      <tr><td class="mono"><span class="method m-post">POST</span>/accounts</td><td>Create; <code class="inline">isValued</code> for INVESTMENT / MICROLOANS</td></tr>
+      <tr><td class="mono"><span class="method m-patch">PATCH</span>/accounts/:id</td><td>Rename / edit</td></tr>
+      <tr><td class="mono"><span class="method m-del">DEL</span>/accounts/:id</td><td>Archive (soft, sets <code class="inline">archivedAt</code>)</td></tr>
+      <tr><td class="mono"><span class="method m-get">GET</span>/categories</td><td>List as parent → children tree</td></tr>
+      <tr><td class="mono"><span class="method m-post">POST</span>/categories</td><td>Create; rejects cross-kind parent &amp; second-level nesting</td></tr>
+      <tr><td class="mono"><span class="method m-patch">PATCH</span>/categories/:id</td><td>Rename / reparent</td></tr>
+      <tr><td class="mono"><span class="method m-del">DEL</span>/categories/:id</td><td>Delete</td></tr>
+    </table>
+
+    <h3 class="sub-h">Transactions · Valuations · Dashboard · Export</h3>
+    <table class="data">
+      <tr><th>Route</th><th>Purpose</th></tr>
+      <tr><td class="mono"><span class="method m-get">GET</span>/transactions</td><td>Filtered list (account, category, kind, date range, pagination)</td></tr>
+      <tr><td class="mono"><span class="method m-post">POST</span>/transactions</td><td>Create income / expense / transfer via one validated path</td></tr>
+      <tr><td class="mono"><span class="method m-patch">PATCH</span>/transactions/:id</td><td>Edit</td></tr>
+      <tr><td class="mono"><span class="method m-del">DEL</span>/transactions/:id</td><td>Delete</td></tr>
+      <tr><td class="mono"><span class="method m-get">GET</span>/accounts/:id/valuations</td><td>Snapshot history</td></tr>
+      <tr><td class="mono"><span class="method m-post">POST</span>/accounts/:id/valuations</td><td>Record a snapshot (upsert by <code class="inline">asOf</code>)</td></tr>
+      <tr><td class="mono"><span class="method m-get">GET</span>/dashboard</td><td>Net worth, income/expense/saved, spending-by-category, savings rate</td></tr>
+      <tr><td class="mono"><span class="method m-get">GET</span>/export/transactions.csv</td><td>Filtered RFC-4180 export</td></tr>
+    </table>
+
+    <h3 class="sub-h">Wire conventions</h3>
+    <div class="grid g2">
+      <div class="card">
+        <div class="kicker">Money is a string</div>
+        <pre style="margin-bottom:0"><span class="m">{
+  </span><span class="s">"id"</span><span class="m">: </span><span class="s">"7c9e…"</span><span class="m">,
+  </span><span class="s">"kind"</span><span class="m">: </span><span class="s">"EXPENSE"</span><span class="m">,
+  </span><span class="s">"amount"</span><span class="m">: </span><span class="s">"82.40"</span><span class="m">,   </span><span class="c">// string, not 82.4</span><span class="m">
+  </span><span class="s">"categoryId"</span><span class="m">: </span><span class="s">"a1b2…"</span><span class="m">
+}</span></pre>
+      </div>
+      <div class="card">
+        <div class="kicker">Error envelope</div>
+        <pre style="margin-bottom:0"><span class="m">{
+  </span><span class="s">"statusCode"</span><span class="m">: 400,
+  </span><span class="s">"error"</span><span class="m">: </span><span class="s">"Bad Request"</span><span class="m">,
+  </span><span class="s">"message"</span><span class="m">: </span><span class="s">"amount must be positive"</span><span class="m">,
+  </span><span class="s">"path"</span><span class="m">: </span><span class="s">"/transactions"</span><span class="m">
+}</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- FRONTEND -->
+  <section class="panel" id="p-fe" role="tabpanel">
+    <div class="section-eyebrow">Client</div>
+    <h2 class="panel-title">App Router, server-first, BFF auth</h2>
+    <p class="sub">Route groups split the unauthenticated shell from the app. A BFF layer proxies the API so the browser never holds a raw JWT. Server data flows through TanStack Query with a deliberate invalidation map.</p>
+
+    <h3 class="sub-h">Route map</h3>
+    <pre><span class="m">app/
+├─ (auth)/
+│  ├─ login/
+│  └─ register/
+└─ (app)/                 </span><span class="c">// middleware-guarded</span><span class="m">
+   ├─ dashboard/
+   ├─ accounts/
+   │  └─ [id]/            </span><span class="c">// detail + valuation history</span><span class="m">
+   ├─ transactions/
+   ├─ categories/
+   ├─ valuations/
+   └─ export/
+api/                      </span><span class="c">// BFF route handlers → NestJS</span><span class="m">
+   └─ auth/[...]/         </span><span class="c">// sets httpOnly, SameSite cookies</span></pre>
+
+    <h3 class="sub-h">Screen inventory</h3>
+    <table class="data">
+      <tr><th>Screen</th><th>Does</th></tr>
+      <tr><td>Dashboard</td><td>Net worth, stat cards, spending donut, savings rate, recent activity</td></tr>
+      <tr><td>Accounts</td><td>List with balances; create / edit / archive; valued vs derived</td></tr>
+      <tr><td>Transactions</td><td>Filtered table; quick-add hero; edit / delete; transfer form</td></tr>
+      <tr><td>Categories</td><td>Parent → child tree management with kind + nesting rules</td></tr>
+      <tr><td>Valuations</td><td>Snapshot entry + history for investment / microloan accounts</td></tr>
+      <tr><td>Export</td><td>Filter + trigger CSV download</td></tr>
+    </table>
+
+    <h3 class="sub-h">Quick-add — the signature flow</h3>
+    <div class="card">
+      <ul class="clean">
+        <li>Hero control is reachable from every screen (pinned in the sidebar)</li>
+        <li>Choose Income, Expense, or Transfer — the form adapts</li>
+        <li>Transfer swaps the category field for a destination account</li>
+        <li>Amount is a masked decimal input; kept as a string, never parsed to float</li>
+        <li>On success, invalidate and the dashboard reflects it immediately</li>
+      </ul>
+    </div>
+
+    <h3 class="sub-h">TanStack Query — cache invalidation map</h3>
+    <table class="data">
+      <tr><th>Mutation</th><th>Invalidates</th></tr>
+      <tr><td class="mono">create / edit / delete transaction</td><td class="mono">['transactions'] · ['dashboard'] · ['accounts']</td></tr>
+      <tr><td class="mono">record valuation</td><td class="mono">['accounts'] · ['dashboard'] · ['valuations', accountId]</td></tr>
+      <tr><td class="mono">create / edit account</td><td class="mono">['accounts'] · ['dashboard']</td></tr>
+      <tr><td class="mono">mutate category</td><td class="mono">['categories'] · ['dashboard']</td></tr>
+    </table>
+    <div class="note-box">A transaction touches balances, so it always invalidates <code class="inline">['accounts']</code> and <code class="inline">['dashboard']</code> alongside <code class="inline">['transactions']</code> — the reason the map is maintained explicitly rather than guessed per call.</div>
+  </section>
+
+  <!-- WORKFLOWS -->
+  <section class="panel" id="p-flows" role="tabpanel">
+    <div class="section-eyebrow">The rules money obeys</div>
+    <h2 class="panel-title">Balance, transfers, snapshots, export</h2>
+    <p class="sub">Derived and valued accounts are separate code paths. Balances come from grouped aggregates, never an N+1 loop. Transfers net to zero across your own accounts.</p>
+
+    <div class="grid g2">
+      <div class="card">
+        <h3>Balance — flow-derived account</h3>
+        <pre style="margin-bottom:0"><span class="m">balance =
+    Σ income   where accountId = A
+  − Σ expense  where accountId = A
+  − Σ transfer where accountId   = A  </span><span class="c">// out</span><span class="m">
+  + Σ transfer where toAccountId = A  </span><span class="c">// in</span></pre>
+      </div>
+      <div class="card">
+        <h3>Balance — manually-valued account</h3>
+        <pre style="margin-bottom:0"><span class="m">balance = value of the AccountValuation
+          with the greatest asOf
+          </span><span class="c">// distinct on account, order asOf desc</span><span class="m">
+          </span><span class="c">// transaction flow is ignored</span></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Net worth</h3>
+      <p>Sum of every derived account's computed balance plus the latest snapshot of every valued account. Transfers between owned accounts cancel, so they are excluded from income and expense — net worth is never double-counted.</p>
+    </div>
+
+    <div class="card">
+      <h3>Dashboard — spending by category</h3>
+      <pre style="margin-bottom:0"><span class="k">SELECT</span> categoryId, <span class="k">SUM</span>(amount)
+<span class="k">FROM</span> <span class="s">"Transaction"</span>
+<span class="k">WHERE</span> userId = :me
+  <span class="k">AND</span> kind = <span class="s">'EXPENSE'</span>          <span class="c">-- transfers excluded at query level</span>
+  <span class="k">AND</span> occurredAt <span class="k">BETWEEN</span> :from <span class="k">AND</span> :to
+<span class="k">GROUP BY</span> categoryId;
+<span class="c">-- children then rolled up under their parent in the app layer</span></pre>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <h3>Microloan monthly sync</h3>
+        <ul class="clean">
+          <li>Read deployed principal from the external loan system</li>
+          <li>Upsert an AccountValuation for the month (unique on <code class="inline">accountId, asOf</code>)</li>
+          <li>Interest received is booked separately as INCOME</li>
+          <li>Principal is never double-counted against interest</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>CSV export format</h3>
+        <ul class="clean">
+          <li>Custom RFC-4180 writer, not a library dump</li>
+          <li>Columns: date, description, account, toAccount, type, category, amount</li>
+          <li>Money via <code class="inline">Decimal.toFixed(2)</code> — exact strings</li>
+          <li>Quotes, commas, newlines properly escaped</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUILD PLAN -->
+  <section class="panel" id="p-build" role="tabpanel">
+    <div class="section-eyebrow">Getting there</div>
+    <h2 class="panel-title">Setup, seed, and definition of done</h2>
+    <p class="sub">Local Postgres now, Docker at deploy time. <code class="inline">DATABASE_URL</code> is the single switchable line between the two.</p>
+
+    <h3 class="sub-h">First run</h3>
+    <pre><span class="m">npm install                      </span><span class="c"># workspace root</span><span class="m">
+npx prisma migrate dev           </span><span class="c"># apply schema to local tally db</span><span class="m">
+npm run seed  --workspace api    </span><span class="c"># starter categories on first user</span><span class="m">
+npm run dev   --workspace api    </span><span class="c"># http://localhost:3000</span><span class="m">
+npm run dev   --workspace web    </span><span class="c"># http://localhost:3001</span></pre>
+
+    <h3 class="sub-h">Environment</h3>
+    <table class="data">
+      <tr><th>Variable</th><th>For</th></tr>
+      <tr><td class="mono">DATABASE_URL</td><td>Postgres connection — the one line that changes for Docker</td></tr>
+      <tr><td class="mono">JWT_ACCESS_SECRET / _TTL</td><td>Short-lived access token</td></tr>
+      <tr><td class="mono">JWT_REFRESH_SECRET / _TTL</td><td>Long-lived refresh token</td></tr>
+      <tr><td class="mono">WEB_ORIGIN</td><td>CORS allow-list for the front end</td></tr>
+      <tr><td class="mono">NEXT_PUBLIC_API_BASE</td><td>API base the BFF proxies to</td></tr>
+    </table>
+
+    <h3 class="sub-h">Seed — starter categories</h3>
+    <div class="grid g2">
+      <div class="card"><div class="kicker">Expense · 10</div><p class="mono" style="font-size:.82rem;color:var(--muted)">Rent · Groceries · Transport · Eating out · Utilities · Data &amp; airtime · Shopping · Health · Entertainment · Other</p></div>
+      <div class="card"><div class="kicker">Income · 4</div><p class="mono" style="font-size:.82rem;color:var(--muted)">Salary · Freelance · Loan interest · Gifts</p></div>
+    </div>
+
+    <h3 class="sub-h">v1 definition of done</h3>
+    <div class="card">
+      <ul class="clean check">
+        <li>Accounts, categories, transactions, transfers, valuations, dashboard, export all shipped</li>
+        <li>Tenant scoping enforced on every mutation via <code class="inline">TenantScopedService</code></li>
+        <li>Money is Decimal(18,2) end to end; never a float, string on the wire</li>
+        <li>Transfers excluded from spend and income at query level</li>
+        <li>Valued accounts derive balance from the greatest-asOf snapshot</li>
+        <li>Net worth reuses balance computation with no double-counting</li>
+        <li>CSV is valid RFC-4180 with exact money strings</li>
+        <li>Test suite green — 92 tests across 11 suites</li>
+      </ul>
+    </div>
+    <div class="note-box" style="margin-top:4px"><strong>Status:</strong> the v1 backend is feature-complete and committed to <code class="inline">origin/main</code>. Next: the <span class="mono">apps/web</span> front end, then the GitHub Actions security-review workflow.</div>
+  </section>
+</main>
+
+<footer class="site">
+  <span>Tally — Engineering Spec</span>
+  <span>v1 · NestJS · Next.js · Prisma · PostgreSQL</span>
+</footer>
+
+<script>
+  (function(){
+    var tabs=[].slice.call(document.querySelectorAll('.tab'));
+    var panels=[].slice.call(document.querySelectorAll('.panel'));
+    function sel(i,focus){
+      tabs.forEach(function(t,j){t.setAttribute('aria-selected',j===i);t.tabIndex=j===i?0:-1;});
+      panels.forEach(function(p,j){p.classList.toggle('active',j===i);});
+      if(focus)tabs[i].focus();
+      window.scrollTo({top:0,behavior:'auto'});
+    }
+    tabs.forEach(function(t,i){
+      t.addEventListener('click',function(){sel(i,false);});
+      t.addEventListener('keydown',function(e){
+        if(e.key==='ArrowRight'){e.preventDefault();sel((i+1)%tabs.length,true);}
+        if(e.key==='ArrowLeft'){e.preventDefault();sel((i-1+tabs.length)%tabs.length,true);}
+        if(e.key==='Home'){e.preventDefault();sel(0,true);}
+        if(e.key==='End'){e.preventDefault();sel(tabs.length-1,true);}
+      });
+    });
+  })();
+</script>
+</body>
+</html>
