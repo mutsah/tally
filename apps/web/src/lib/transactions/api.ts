@@ -70,13 +70,3 @@ export function createOpeningBalance(
     jsonInit('POST', { ...input, kind: 'OPENING' as const }),
   ).then(parseJson<Transaction>);
 }
-
-/** The user's OPENING transactions (≤ one per account) — used to tell which
- *  accounts already have a starting balance. Relies on the `kind` filter. */
-export function fetchOpeningBalances(): Promise<Transaction[]> {
-  return fetch('/api/transactions?kind=OPENING&pageSize=100', {
-    cache: 'no-store',
-  })
-    .then(parseJson<PaginatedTransactions>)
-    .then((page) => page.data);
-}

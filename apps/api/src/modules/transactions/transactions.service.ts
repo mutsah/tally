@@ -292,7 +292,7 @@ export class TransactionsService extends TenantScopedService<Transaction> {
           'An opening balance cannot have a category',
         );
       }
-      await this.assertSingleOpening(userId, accountId, excludeTxId);
+      await this.assertAccountEmptyForOpening(userId, accountId, excludeTxId);
       return { toAccountId: null, categoryId: null };
     }
 
@@ -349,8 +349,9 @@ export class TransactionsService extends TenantScopedService<Transaction> {
   /**
    * Map a write failure to a clean HTTP error. The only unique constraint on the
    * transactions table is the partial index enforcing one OPENING per account, so
-   * a P2002 here means a duplicate OPENING slipped past `assertSingleOpening` (a
-   * double-submit race) and the DB backstopped it — surface the same friendly 400.
+   * a P2002 here means a duplicate OPENING slipped past
+   * `assertAccountEmptyForOpening` (a double-submit race on an empty account) and
+   * the DB backstopped it — surface the same friendly 400.
    */
   private handleWriteError(error: unknown): never {
     if (
@@ -365,15 +366,22 @@ export class TransactionsService extends TenantScopedService<Transaction> {
   }
 
   /**
-   * At most one OPENING per account. First line of defence: this pre-check
-   * returns a clean 400 for the common (non-racing) case. The true backstop
-   * against a double-submit race is the partial unique index
-   * `transactions_accountId_opening_key` (see migration
-   * 20260701130000_add_opening_account_unique_index), whose P2002 is mapped by
-   * `handleWriteError`. Kind is immutable after creation, so create is the only
-   * way to add an OPENING; on update, `excludeTxId` skips the row being edited.
+   * An OPENING is only valid on an account with NO existing transactions of any
+   * kind — as the source (`accountId`) OR as a transfer destination
+   * (`toAccountId`). An opening balance declares money the account already held
+   * before tracking; once the account has ANY activity its balance is derived
+   * from that activity, so an opening on top would double-state it. This
+   * SUBSUMES the old one-per-account rule (an existing OPENING is itself a
+   * transaction). On update, `excludeTxId` skips the row being edited.
+   *
+   * The partial unique index `transactions_accountId_opening_key` is retained as
+   * a DB backstop: it still rejects the double-submit race where two OPENING
+   * inserts on an empty account both pass this pre-check, and its P2002 is mapped
+   * to a clean 400 by `handleWriteError`. (It can't express this stronger rule —
+   * "no OPENING when any transaction exists" is existence, not uniqueness — so it
+   * stays rather than being dropped.)
    */
-  private async assertSingleOpening(
+  private async assertAccountEmptyForOpening(
     userId: string,
     accountId: string,
     excludeTxId?: string,
@@ -381,15 +389,14 @@ export class TransactionsService extends TenantScopedService<Transaction> {
     const existing = await this.prisma.transaction.findFirst({
       where: {
         userId,
-        accountId,
-        kind: TransactionKind.OPENING,
+        OR: [{ accountId }, { toAccountId: accountId }],
         ...(excludeTxId ? { NOT: { id: excludeTxId } } : {}),
       },
       select: { id: true },
     });
     if (existing) {
       throw new BadRequestException(
-        'This account already has an opening balance',
+        'An opening balance can only be set on an account with no transactions yet',
       );
     }
   }

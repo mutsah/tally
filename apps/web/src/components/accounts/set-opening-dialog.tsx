@@ -18,9 +18,9 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Set an account's starting balance after the fact (CASH/BANK with no OPENING).
-// The parent owns the mutation; a duplicate is rejected by the DB and surfaces
-// here as `error` (the P2002 → 400 mapping already handles the race).
+// Set an account's starting balance after the fact (CASH/BANK with no
+// transactions yet). The parent owns the mutation; if the account gained
+// activity in a race, the backend rejects and `error` carries its message.
 export function SetOpeningDialog({
   account,
   open,
@@ -32,7 +32,7 @@ export function SetOpeningDialog({
   account: Account;
   open: boolean;
   submitting: boolean;
-  error: boolean;
+  error: string | null;
   onSubmit: (values: { amount: string; date: string }) => void;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -71,8 +71,7 @@ export function SetOpeningDialog({
 
           {localError || error ? (
             <p className="text-sm text-[color:var(--neg)]" role="alert">
-              {localError ??
-                'Couldn’t save the starting balance — it may already be set. Please try again.'}
+              {localError ?? error}
             </p>
           ) : null}
 

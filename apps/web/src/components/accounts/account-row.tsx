@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { createOpeningBalance } from '@/lib/transactions/api';
+import { ApiError } from '@/lib/api/http';
 import { AccountForm } from './account-form';
 import { ValuationForm } from './valuation-form';
 import { SetOpeningDialog } from './set-opening-dialog';
@@ -21,13 +22,13 @@ import { SetOpeningDialog } from './set-opening-dialog';
 export function AccountRow({
   account,
   onInvalidate,
-  hasOpening,
-  openingsResolved,
+  hasActivity,
+  activityResolved,
 }: {
   account: Account;
   onInvalidate: () => Promise<unknown>;
-  hasOpening: boolean;
-  openingsResolved: boolean;
+  hasActivity: boolean;
+  activityResolved: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [valuing, setValuing] = useState(false);
@@ -55,9 +56,11 @@ export function AccountRow({
   });
 
   const valued = isValuedAccount(account.type);
-  // Derived (CASH/BANK) accounts can carry a one-time starting balance; the
-  // action hides once one exists (or for valued accounts, which use valuations).
-  const canSetOpening = !valued && openingsResolved && !hasOpening;
+  // A starting balance is only valid on a derived account with NO transactions
+  // yet (an opening on top of activity would double-state the balance). The
+  // action hides once the account has any activity, and never shows for valued
+  // accounts (which use valuations).
+  const canSetOpening = !valued && activityResolved && !hasActivity;
 
   return (
     <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-tally">
@@ -174,13 +177,19 @@ export function AccountRow({
         </Dialog>
       ) : null}
 
-      {/* Set starting balance — derived accounts without an opening yet. */}
+      {/* Set starting balance — derived accounts with no transactions yet. */}
       {!valued ? (
         <SetOpeningDialog
           account={account}
           open={settingOpening}
           submitting={openingMutation.isPending}
-          error={openingMutation.isError}
+          error={
+            openingMutation.isError
+              ? openingMutation.error instanceof ApiError
+                ? openingMutation.error.message
+                : 'Couldn’t save the starting balance. Please try again.'
+              : null
+          }
           onSubmit={(values) => openingMutation.mutate(values)}
           onOpenChange={(open) => {
             if (!open) {

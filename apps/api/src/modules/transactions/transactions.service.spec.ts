@@ -58,6 +58,9 @@ describe('TransactionsService', () => {
       { id: 'acc-a2', userId: A },
       { id: 'acc-b', userId: B },
       { id: 'acc-b2', userId: B },
+      // Empty accounts (no transactions) — valid targets for an OPENING.
+      { id: 'acc-empty', userId: A },
+      { id: 'acc-empty2', userId: A },
     ];
     categories = [
       { id: 'cat-exp-a', userId: A, kind: 'EXPENSE' },
@@ -418,17 +421,17 @@ describe('TransactionsService', () => {
       kind: 'OPENING' as never,
       amount: '1000.00',
       date: '2026-06-15T00:00:00.000Z',
-      accountId: 'acc-a',
+      accountId: 'acc-empty', // an account with no transactions
     };
 
-    it('creates one row with the account, no category, no toAccount, Decimal amount', async () => {
+    it('creates one row on an empty account (no category, no toAccount, Decimal amount)', async () => {
       const before = txStore.length;
       const res = await service.create(A, validOpening);
       expect(prismaMock.transaction.create).toHaveBeenCalledTimes(1);
       expect(txStore.length).toBe(before + 1);
       expect(res).toMatchObject({
         kind: 'OPENING',
-        accountId: 'acc-a',
+        accountId: 'acc-empty',
         toAccountId: null,
         categoryId: null,
         userId: A,
@@ -463,18 +466,42 @@ describe('TransactionsService', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('allows at most one OPENING per account (rejects a second)', async () => {
-      await service.create(A, validOpening);
+    it('rejects an OPENING on an account that already has an expense/income', async () => {
+      // acc-a already carries seeded EXPENSE transactions.
+      await expect(
+        service.create(A, { ...validOpening, accountId: 'acc-a' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects an OPENING on an account that already received a transfer-in', async () => {
+      // Transfer INTO the otherwise-empty account → it now has activity as the
+      // destination, so an opening balance would double-state it.
+      await service.create(A, {
+        kind: 'TRANSFER' as never,
+        amount: '400.00',
+        date: '2026-06-14T00:00:00.000Z',
+        accountId: 'acc-a', // owned source
+        toAccountId: 'acc-empty',
+      });
+      await expect(
+        service.create(A, validOpening), // OPENING on acc-empty
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('allows at most one OPENING per account — now a subset of the no-transactions rule', async () => {
+      await service.create(A, validOpening); // first OPENING on acc-empty
+      // The account now has a transaction (its own OPENING) → a second is rejected.
       await expect(service.create(A, validOpening)).rejects.toBeInstanceOf(
         BadRequestException,
       );
     });
 
     it('rejected at the DB constraint when the pre-check races (P2002 → clean 400, not a 500)', async () => {
-      // Simulate a double-submit race: the pre-check sees no existing OPENING
-      // (the concurrent insert is not yet visible), but the partial unique index
-      // `transactions_accountId_opening_key` rejects the second insert with P2002.
-      prismaMock.transaction.findFirst.mockResolvedValueOnce(null); // assertSingleOpening passes
+      // Simulate a double-submit race on an empty account: the pre-check sees no
+      // existing transaction (the concurrent insert isn't visible yet), but the
+      // partial unique index `transactions_accountId_opening_key` rejects the
+      // second OPENING insert with P2002.
+      prismaMock.transaction.findFirst.mockResolvedValueOnce(null); // pre-check passes
       prismaMock.transaction.create.mockRejectedValueOnce(
         new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
           code: 'P2002',
@@ -487,15 +514,15 @@ describe('TransactionsService', () => {
       );
     });
 
-    it('the one-per-account rule is scoped per account and per user', async () => {
-      await service.create(A, validOpening); // acc-a
-      // Same user, different account → allowed.
+    it('is allowed on any EMPTY owned account, scoped per user', async () => {
+      await service.create(A, validOpening); // acc-empty (A)
+      // Same user, a different empty account → allowed.
       await expect(
-        service.create(A, { ...validOpening, accountId: 'acc-a2' }),
-      ).resolves.toMatchObject({ kind: 'OPENING', accountId: 'acc-a2' });
-      // Different user opening their own account → allowed (scoped by userId).
+        service.create(A, { ...validOpening, accountId: 'acc-empty2' }),
+      ).resolves.toMatchObject({ kind: 'OPENING', accountId: 'acc-empty2' });
+      // Different user opening their own empty account → allowed (userId-scoped).
       await expect(
-        service.create(B, { ...validOpening, accountId: 'acc-b' }),
+        service.create(B, { ...validOpening, accountId: 'acc-b2' }),
       ).resolves.toMatchObject({ kind: 'OPENING', userId: B });
     });
 

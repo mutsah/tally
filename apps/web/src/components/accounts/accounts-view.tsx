@@ -6,10 +6,8 @@ import { X } from 'lucide-react';
 import type { Account } from '@/lib/api/types';
 import { queryKeys, invalidates } from '@/lib/query-keys';
 import { fetchAccounts, createAccount } from '@/lib/accounts/api';
-import {
-  createOpeningBalance,
-  fetchOpeningBalances,
-} from '@/lib/transactions/api';
+import { createOpeningBalance, fetchTransactions } from '@/lib/transactions/api';
+import { isValuedAccount } from '@/lib/money';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -36,17 +34,36 @@ export function AccountsView({
     queryFn: fetchAccounts,
     ...(initialAccounts ? { initialData: initialAccounts } : {}),
   });
-  // Which accounts already have an OPENING (so "Set starting balance" hides once
-  // set). Keyed under ['transactions', …] so a new OPENING invalidates it.
-  const openingsQuery = useQuery({
-    queryKey: [...queryKeys.transactions, { kind: 'OPENING' }],
-    queryFn: fetchOpeningBalances,
-  });
-  const openingAccountIds = useMemo(
-    () => new Set((openingsQuery.data ?? []).map((t) => t.accountId)),
-    [openingsQuery.data],
+  // An OPENING is only valid on an account with NO transactions, so "Set starting
+  // balance" shows only for derived accounts with zero activity — not merely
+  // those without an existing OPENING. We check "has any transaction?" per
+  // derived account with one cheap existence query (pageSize:1 → total > 0),
+  // covering both source and transfer-destination activity. Keyed under
+  // ['transactions', …] so any transaction mutation refreshes it.
+  const derivedIds = useMemo(
+    () =>
+      (accountsQuery.data ?? [])
+        .filter((a) => !isValuedAccount(a.type))
+        .map((a) => a.id)
+        .sort(),
+    [accountsQuery.data],
   );
-  const openingsResolved = !openingsQuery.isLoading;
+  const activityQuery = useQuery({
+    queryKey: [...queryKeys.transactions, 'account-activity', derivedIds],
+    queryFn: async () => {
+      const results = await Promise.all(
+        derivedIds.map((id) =>
+          fetchTransactions({ accountId: id, pageSize: 1 }).then(
+            (page) => [id, page.total > 0] as const,
+          ),
+        ),
+      );
+      return new Set(results.filter(([, has]) => has).map(([id]) => id));
+    },
+    enabled: derivedIds.length > 0,
+  });
+  const accountsWithActivity = activityQuery.data ?? new Set<string>();
+  const activityResolved = derivedIds.length === 0 || activityQuery.isSuccess;
 
   // A transaction (the OPENING) touches balances, so invalidate the full set —
   // accounts, dashboard, and transactions (which refreshes the openings query).
@@ -167,8 +184,8 @@ export function AccountsView({
                   key={account.id}
                   account={account}
                   onInvalidate={invalidateAll}
-                  hasOpening={openingAccountIds.has(account.id)}
-                  openingsResolved={openingsResolved}
+                  hasActivity={accountsWithActivity.has(account.id)}
+                  activityResolved={activityResolved}
                 />
               ))
             )}
@@ -189,8 +206,8 @@ export function AccountsView({
                       key={account.id}
                       account={account}
                       onInvalidate={invalidateAll}
-                      hasOpening={openingAccountIds.has(account.id)}
-                      openingsResolved={openingsResolved}
+                      hasActivity={accountsWithActivity.has(account.id)}
+                      activityResolved={activityResolved}
                     />
                   ))
                 : null}
