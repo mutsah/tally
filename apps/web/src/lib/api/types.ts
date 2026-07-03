@@ -111,10 +111,26 @@ export interface NewOpeningBalance {
 export type CategoryKind = 'INCOME' | 'EXPENSE';
 
 // GET /categories returns each top-level category immediately followed by its
-// children (both alphabetical); children carry `parentId`.
+// children (both alphabetical); children carry `parentId`. Flat — the client
+// builds the one-level tree.
 export interface Category {
   id: string;
   name: string;
   kind: CategoryKind;
   parentId: string | null;
+}
+
+// Create. Parent (if any) must be top-level, owned, and the SAME kind (API
+// enforced). Omit parentId for a top-level category.
+export interface NewCategory {
+  name: string;
+  kind: CategoryKind;
+  parentId?: string;
+}
+
+// PATCH — kind is immutable (omitted). parentId: omit = unchanged, null =
+// promote to top-level, uuid = re-parent under a valid top-level same-kind parent.
+export interface CategoryPatch {
+  name?: string;
+  parentId?: string | null;
 }
