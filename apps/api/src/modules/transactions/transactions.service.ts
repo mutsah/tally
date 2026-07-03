@@ -227,6 +227,9 @@ export class TransactionsService extends TenantScopedService<Transaction> {
     if (query.categoryId) {
       where.categoryId = query.categoryId;
     }
+    if (query.kind) {
+      where.kind = query.kind;
+    }
     if (query.from || query.to) {
       const range: { gte?: Date; lte?: Date } = {};
       if (query.from) {

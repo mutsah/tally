@@ -1,7 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { TransactionKind } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsDateString,
+  IsEnum,
   IsInt,
   IsOptional,
   IsUUID,
@@ -46,6 +48,14 @@ export class ListTransactionsQueryDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter by kind (INCOME, EXPENSE, TRANSFER, OPENING)',
+    enum: TransactionKind,
+  })
+  @IsOptional()
+  @IsEnum(TransactionKind)
+  kind?: TransactionKind;
 
   @ApiPropertyOptional({
     description: 'Start of date range, inclusive (ISO 8601)',

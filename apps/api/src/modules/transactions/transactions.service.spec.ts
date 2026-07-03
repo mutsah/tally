@@ -285,6 +285,24 @@ describe('TransactionsService', () => {
       });
       expect(res.data.map((t) => t.id)).toEqual(['tx-a1']);
     });
+
+    it('filters by kind', async () => {
+      // Seed one INCOME alongside A's three seeded EXPENSE rows.
+      await service.create(A, {
+        kind: 'INCOME' as never,
+        amount: '100.00',
+        date: '2026-06-15T00:00:00.000Z',
+        accountId: 'acc-a',
+        categoryId: 'cat-inc-a',
+      });
+      const income = await service.findAll(A, { kind: 'INCOME' as never });
+      expect(income.total).toBe(1);
+      expect(income.data.every((t) => t.kind === 'INCOME')).toBe(true);
+
+      const expense = await service.findAll(A, { kind: 'EXPENSE' as never });
+      expect(expense.total).toBe(3);
+      expect(expense.data.every((t) => t.kind === 'EXPENSE')).toBe(true);
+    });
   });
 
   describe('transfers (single-row model)', () => {
