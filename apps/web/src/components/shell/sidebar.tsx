@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { ArrowRight, LogOut, Sprout } from 'lucide-react';
+import { LogOut, Sprout } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { navGroups } from './nav-config';
+import { QuickAdd } from '@/components/quick-add/quick-add';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -76,32 +77,8 @@ export function Sidebar() {
         </button>
       </nav>
 
-      {/* Quick add — pinned, non-functional placeholder for now (F3). */}
-      <div className="mt-auto rounded-[14px] border border-white/10 bg-pine-soft p-3.5">
-        <div className="mb-2.5 flex items-center gap-2 text-[0.82rem] font-semibold text-white/90">
-          <span className="size-1.5 rounded-full bg-gold-soft" />
-          Quick add
-        </div>
-        <div className="mb-2 flex items-center gap-2 rounded-[10px] border border-white/10 bg-pine-deep px-2.5 py-2">
-          <span className="font-mono text-sm text-white/60">$</span>
-          <span className="font-mono text-sm font-semibold text-white/90">
-            0.00
-          </span>
-          <span className="ml-auto flex size-5 items-center justify-center rounded-[7px] bg-gold text-pine-deep">
-            <ArrowRight className="size-3" />
-          </span>
-        </div>
-        <div className="flex gap-1.5">
-          {['Expense', 'Income', 'Transfer'].map((t) => (
-            <span
-              key={t}
-              className="flex-1 rounded-[8px] border border-white/10 bg-white/5 py-1.5 text-center font-mono text-[0.66rem] text-white/70"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-      </div>
+      {/* Quick add — the signature create flow (F3). */}
+      <QuickAdd />
     </aside>
   );
 }

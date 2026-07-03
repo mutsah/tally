@@ -2,9 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import type { Account, NewAccount } from '@/lib/api/types';
+import { X } from 'lucide-react';
+import type { Account } from '@/lib/api/types';
 import { queryKeys, invalidates } from '@/lib/query-keys';
 import { fetchAccounts, createAccount } from '@/lib/accounts/api';
+import {
+  createOpeningBalance,
+  fetchOpeningBalances,
+} from '@/lib/transactions/api';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,7 +19,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { AccountRow } from './account-row';
-import { AccountForm } from './account-form';
+import { AccountForm, type AccountFormValues } from './account-form';
 
 export function AccountsView({
   initialAccounts,
@@ -24,23 +29,63 @@ export function AccountsView({
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const accountsQuery = useQuery({
     queryKey: queryKeys.accounts,
     queryFn: fetchAccounts,
     ...(initialAccounts ? { initialData: initialAccounts } : {}),
   });
+  // Which accounts already have an OPENING (so "Set starting balance" hides once
+  // set). Keyed under ['transactions', …] so a new OPENING invalidates it.
+  const openingsQuery = useQuery({
+    queryKey: [...queryKeys.transactions, { kind: 'OPENING' }],
+    queryFn: fetchOpeningBalances,
+  });
+  const openingAccountIds = useMemo(
+    () => new Set((openingsQuery.data ?? []).map((t) => t.accountId)),
+    [openingsQuery.data],
+  );
+  const openingsResolved = !openingsQuery.isLoading;
 
-  const invalidateAccounts = () =>
+  // A transaction (the OPENING) touches balances, so invalidate the full set —
+  // accounts, dashboard, and transactions (which refreshes the openings query).
+  const invalidateAll = () =>
     Promise.all(
-      invalidates.account().map((key) => qc.invalidateQueries({ queryKey: key })),
+      invalidates
+        .transaction()
+        .map((key) => qc.invalidateQueries({ queryKey: key })),
     );
 
   const createMutation = useMutation({
-    mutationFn: (input: NewAccount) => createAccount(input),
-    onSuccess: async () => {
-      await invalidateAccounts();
+    // Account first, THEN the optional OPENING — never atomic across endpoints.
+    mutationFn: async (values: AccountFormValues) => {
+      const account = await createAccount({
+        name: values.name,
+        type: values.type,
+      });
+      if (values.opening) {
+        try {
+          await createOpeningBalance({
+            accountId: account.id,
+            amount: values.opening.amount,
+            date: values.opening.date,
+          });
+        } catch {
+          // Forgiving: keep the account, flag the balance as unsaved.
+          return { openingFailed: true };
+        }
+      }
+      return { openingFailed: false };
+    },
+    onSuccess: async (result) => {
+      await invalidateAll();
       setCreating(false);
+      setNotice(
+        result.openingFailed
+          ? 'Account created, but its starting balance didn’t save. You can set it from the account below.'
+          : null,
+      );
     },
   });
 
@@ -64,6 +109,20 @@ export function AccountsView({
         </div>
         <Button onClick={() => setCreating(true)}>New account</Button>
       </header>
+
+      {notice ? (
+        <div className="flex items-start justify-between gap-4 rounded-xl border border-[color:var(--gold)]/40 bg-[color:var(--gold-bg)] px-4 py-3 text-sm">
+          <p className="text-foreground">{notice}</p>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            className="shrink-0 text-faint hover:text-foreground"
+            aria-label="Dismiss"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      ) : null}
 
       <Dialog
         open={creating}
@@ -107,7 +166,9 @@ export function AccountsView({
                 <AccountRow
                   key={account.id}
                   account={account}
-                  onInvalidate={invalidateAccounts}
+                  onInvalidate={invalidateAll}
+                  hasOpening={openingAccountIds.has(account.id)}
+                  openingsResolved={openingsResolved}
                 />
               ))
             )}
@@ -127,7 +188,9 @@ export function AccountsView({
                     <AccountRow
                       key={account.id}
                       account={account}
-                      onInvalidate={invalidateAccounts}
+                      onInvalidate={invalidateAll}
+                      hasOpening={openingAccountIds.has(account.id)}
+                      openingsResolved={openingsResolved}
                     />
                   ))
                 : null}

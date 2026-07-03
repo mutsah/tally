@@ -13,18 +13,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { createOpeningBalance } from '@/lib/transactions/api';
 import { AccountForm } from './account-form';
 import { ValuationForm } from './valuation-form';
+import { SetOpeningDialog } from './set-opening-dialog';
 
 export function AccountRow({
   account,
   onInvalidate,
+  hasOpening,
+  openingsResolved,
 }: {
   account: Account;
   onInvalidate: () => Promise<unknown>;
+  hasOpening: boolean;
+  openingsResolved: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [valuing, setValuing] = useState(false);
+  const [settingOpening, setSettingOpening] = useState(false);
 
   const patchMutation = useMutation({
     mutationFn: (patch: AccountPatch) => updateAccount(account.id, patch),
@@ -34,7 +41,23 @@ export function AccountRow({
     },
   });
 
+  const openingMutation = useMutation({
+    mutationFn: (values: { amount: string; date: string }) =>
+      createOpeningBalance({
+        accountId: account.id,
+        amount: values.amount,
+        date: values.date,
+      }),
+    onSuccess: async () => {
+      await onInvalidate();
+      setSettingOpening(false);
+    },
+  });
+
   const valued = isValuedAccount(account.type);
+  // Derived (CASH/BANK) accounts can carry a one-time starting balance; the
+  // action hides once one exists (or for valued accounts, which use valuations).
+  const canSetOpening = !valued && openingsResolved && !hasOpening;
 
   return (
     <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-tally">
@@ -69,6 +92,18 @@ export function AccountRow({
         {valued ? (
           <Button size="sm" variant="ghost" onClick={() => setValuing(true)}>
             Record value
+          </Button>
+        ) : null}
+        {canSetOpening ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              openingMutation.reset();
+              setSettingOpening(true);
+            }}
+          >
+            Set starting balance
           </Button>
         ) : null}
         <Button
@@ -137,6 +172,23 @@ export function AccountRow({
             />
           </DialogContent>
         </Dialog>
+      ) : null}
+
+      {/* Set starting balance — derived accounts without an opening yet. */}
+      {!valued ? (
+        <SetOpeningDialog
+          account={account}
+          open={settingOpening}
+          submitting={openingMutation.isPending}
+          error={openingMutation.isError}
+          onSubmit={(values) => openingMutation.mutate(values)}
+          onOpenChange={(open) => {
+            if (!open) {
+              openingMutation.reset();
+              setSettingOpening(false);
+            }
+          }}
+        />
       ) : null}
     </div>
   );

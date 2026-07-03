@@ -1,13 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import type { AccountType, NewAccount } from '@/lib/api/types';
+import type { AccountType } from '@/lib/api/types';
 import { accountKindLabel, isValuedAccount } from '@/lib/money';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { OpeningBalanceFields } from './opening-balance-fields';
 
 const KINDS: AccountType[] = ['CASH', 'BANK', 'INVESTMENT', 'MICROLOANS'];
+const MONEY_RE = /^\d+(\.\d{1,2})?$/;
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// What the form emits. `opening` is present only for a NEW derived (CASH/BANK)
+// account whose optional starting balance was filled in; null otherwise.
+export interface AccountFormValues {
+  name: string;
+  type: AccountType;
+  opening: { amount: string; date: string } | null;
+}
 
 // One form for both create and edit. On edit the type is immutable (the API
 // omits `type` from the update DTO), so `lockedType` fixes it and hides the
@@ -24,13 +38,18 @@ export function AccountForm({
   lockedType?: AccountType;
   submitting: boolean;
   error: boolean;
-  onSubmit: (input: NewAccount) => void;
+  onSubmit: (values: AccountFormValues) => void;
   onCancel: () => void;
 }) {
   const isEdit = lockedType !== undefined;
   const [name, setName] = useState(initialName);
   const [type, setType] = useState<AccountType>(lockedType ?? 'BANK');
+  const [openingAmount, setOpeningAmount] = useState('');
+  const [openingDate, setOpeningDate] = useState(todayIso());
   const [localError, setLocalError] = useState<string | null>(null);
+
+  // Opening balance applies ONLY to derived accounts, and only on create.
+  const showOpening = !isEdit && !isValuedAccount(type);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,8 +57,19 @@ export function AccountForm({
       setLocalError('Give the account a name.');
       return;
     }
+    let opening: AccountFormValues['opening'] = null;
+    if (showOpening && openingAmount.trim()) {
+      if (!MONEY_RE.test(openingAmount) || !/[1-9]/.test(openingAmount)) {
+        setLocalError('Starting balance must be greater than 0 (or left blank).');
+        return;
+      }
+      opening = {
+        amount: openingAmount,
+        date: new Date(openingDate).toISOString(),
+      };
+    }
     setLocalError(null);
-    onSubmit({ name: name.trim(), type });
+    onSubmit({ name: name.trim(), type, opening });
   }
 
   return (
@@ -88,6 +118,16 @@ export function AccountForm({
             : 'Balance is derived from this account’s transactions.'}
         </p>
       </div>
+
+      {showOpening ? (
+        <OpeningBalanceFields
+          amount={openingAmount}
+          onAmountChange={setOpeningAmount}
+          date={openingDate}
+          onDateChange={setOpeningDate}
+          help="Optional — the balance this account already holds today. Leave blank to start at $0.00; you can add it later."
+        />
+      ) : null}
 
       {localError || error ? (
         <p className="text-sm text-[color:var(--neg)]" role="alert">

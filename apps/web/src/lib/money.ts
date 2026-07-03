@@ -1,4 +1,4 @@
-import type { AccountType } from '@/lib/api/types';
+import type { AccountType, TransactionKind } from '@/lib/api/types';
 
 const VALUED: readonly AccountType[] = ['INVESTMENT', 'MICROLOANS'];
 
@@ -17,6 +17,17 @@ const KIND_LABEL: Record<AccountType, string> = {
 
 export function accountKindLabel(type: AccountType): string {
   return KIND_LABEL[type];
+}
+
+const TX_KIND_LABEL: Record<TransactionKind, string> = {
+  INCOME: 'Income',
+  EXPENSE: 'Expense',
+  TRANSFER: 'Transfer',
+  OPENING: 'Opening',
+};
+
+export function transactionKindLabel(kind: TransactionKind): string {
+  return TX_KIND_LABEL[kind];
 }
 
 /**
