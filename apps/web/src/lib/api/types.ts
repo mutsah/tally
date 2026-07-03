@@ -134,3 +134,53 @@ export interface CategoryPatch {
   name?: string;
   parentId?: string | null;
 }
+
+// ── Dashboard (4 read-only endpoints; all money is strings) ───────────────────
+// GET /dashboard/net-worth — non-archived accounts, balance derived (CASH/BANK)
+// or from the latest valuation (INVESTMENT/MICROLOANS).
+export interface NetWorthAccount {
+  accountId: string;
+  name: string;
+  type: AccountType;
+  balance: Money;
+}
+export interface NetWorth {
+  total: Money;
+  accounts: NetWorthAccount[];
+}
+
+// GET /dashboard/income-vs-expense?from&to — TRANSFER + OPENING excluded.
+export interface IncomeVsExpense {
+  income: Money;
+  expense: Money;
+  net: Money;
+}
+
+// GET /dashboard/spending-by-category?from&to — EXPENSE only (transfers, income,
+// OPENING excluded); parent totals are rolled up SERVER-SIDE (own + children).
+// Returns every expense category, including zero-total ones — filter client-side.
+export interface CategorySpend {
+  categoryId: string;
+  name: string;
+  total: Money;
+}
+export interface CategoryRollup extends CategorySpend {
+  children: CategorySpend[];
+}
+export interface SpendingByCategory {
+  grandTotal: Money;
+  categories: CategoryRollup[];
+}
+
+// GET /dashboard/recent-activity?limit — most recent, date desc, ALL kinds
+// (transfers and openings included as real activity).
+export interface RecentTransaction {
+  id: string;
+  kind: TransactionKind;
+  amount: Money;
+  date: string; // ISO 8601
+  note: string | null;
+  account: { id: string; name: string; type: string } | null;
+  toAccount: { id: string; name: string; type: string } | null;
+  category: { id: string; name: string; kind: string } | null;
+}

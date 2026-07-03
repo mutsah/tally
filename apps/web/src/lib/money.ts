@@ -31,6 +31,26 @@ export function transactionKindLabel(kind: TransactionKind): string {
 }
 
 /**
+ * Convert a money STRING to an integer number of cents. Used ONLY to compute
+ * display ratios (donut proportions, savings rate) — never to display money,
+ * which always stays a string. Integer cents avoid floating-point money error.
+ */
+export function moneyToCents(value: string): number {
+  const negative = value.startsWith('-');
+  const abs = negative ? value.slice(1) : value;
+  const [intPart, decRaw = ''] = abs.split('.');
+  const cents = Number(intPart) * 100 + Number(`${decRaw}00`.slice(0, 2));
+  return negative ? -cents : cents;
+}
+
+/** part / whole as a whole-number percent (0 when whole is 0). For display. */
+export function percentOf(part: string, whole: string): number {
+  const wholeCents = moneyToCents(whole);
+  if (wholeCents === 0) return 0;
+  return Math.round((moneyToCents(part) / wholeCents) * 100);
+}
+
+/**
  * Format a decimal money STRING for display. Purely string-based (group the
  * integer part, keep two decimals) — money is never parsed to a float.
  */
