@@ -6,7 +6,7 @@ import type {
   Category,
   TransactionKind,
 } from '@/lib/api/types';
-import { transactionKindLabel } from '@/lib/money';
+import { formatMoney, transactionKindLabel } from '@/lib/money';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -36,6 +36,20 @@ const MONEY_RE = /^\d+(\.\d{1,2})?$/;
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+// Account option label: name (primary) + current balance (secondary, mono). The
+// balance is a display annotation only — a string from GET /accounts, never
+// parsed to a float and never used to gate/validate the amount.
+function AccountOption({ account }: { account: Account }) {
+  return (
+    <>
+      {account.name}{' '}
+      <span className="num text-xs text-faint">
+        · {formatMoney(account.balance)}
+      </span>
+    </>
+  );
 }
 
 function Field({
@@ -187,7 +201,7 @@ export function TransactionForm({
           <SelectContent>
             {openAccounts.map((a) => (
               <SelectItem key={a.id} value={a.id}>
-                {a.name}
+                <AccountOption account={a} />
               </SelectItem>
             ))}
           </SelectContent>
@@ -205,7 +219,7 @@ export function TransactionForm({
                 .filter((a) => a.id !== accountId)
                 .map((a) => (
                   <SelectItem key={a.id} value={a.id}>
-                    {a.name}
+                    <AccountOption account={a} />
                   </SelectItem>
                 ))}
             </SelectContent>
