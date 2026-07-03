@@ -36,6 +36,15 @@ export interface NewValuation {
   note?: string;
 }
 
+// GET /valuations — the user's snapshots, asOf desc. `value` is a string.
+export interface Valuation {
+  id: string;
+  accountId: string;
+  value: Money;
+  asOf: string; // ISO 8601
+  note: string | null;
+}
+
 // ── Transactions ──────────────────────────────────────────────────────────────
 // NOTE: the API field is `date` (the engineering spec's `occurredAt` never
 // shipped). OPENING exists (starting balance for a derived account) though the

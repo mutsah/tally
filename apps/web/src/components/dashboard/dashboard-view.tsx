@@ -8,8 +8,11 @@ import type {
   NetWorth,
   RecentTransaction,
   SpendingByCategory,
+  Valuation,
 } from '@/lib/api/types';
 import { queryKeys } from '@/lib/query-keys';
+import { isValuedAccount } from '@/lib/money';
+import { fetchValuations } from '@/lib/accounts/api';
 import {
   fetchIncomeVsExpense,
   fetchNetWorth,
@@ -28,6 +31,7 @@ import { SpendingOverview } from './spending-overview';
 import { StatCards } from './stat-cards';
 import { SavingsRateCard } from './savings-rate-card';
 import { RecentTransactions } from './recent-transactions';
+import { ValuationStatusCard } from './valuation-status-card';
 import { PeriodSelect } from './period-select';
 
 export function DashboardView({
@@ -35,11 +39,13 @@ export function DashboardView({
   initialIncome,
   initialSpending,
   initialRecent,
+  initialValuations,
 }: {
   initialNetWorth: NetWorth | null;
   initialIncome: IncomeVsExpense | null;
   initialSpending: SpendingByCategory | null;
   initialRecent: RecentTransaction[] | null;
+  initialValuations: Valuation[] | null;
 }) {
   const [period, setPeriod] = useState<PeriodKey>(DEFAULT_PERIOD);
   const range = periodRange(period);
@@ -52,7 +58,7 @@ export function DashboardView({
   });
   const recentQuery = useQuery({
     queryKey: [...queryKeys.dashboard, 'recent-activity'],
-    queryFn: () => fetchRecentActivity(8),
+    queryFn: () => fetchRecentActivity(5),
     ...(initialRecent ? { initialData: initialRecent } : {}),
   });
   const incomeQuery = useQuery({
@@ -69,6 +75,17 @@ export function DashboardView({
       ? { initialData: initialSpending }
       : {}),
   });
+  // Last-valued dates for the valuation-status card — one query for all the
+  // user's snapshots (asOf desc), fetched only when they have valued accounts.
+  const hasValued = (netWorthQuery.data?.accounts ?? []).some((a) =>
+    isValuedAccount(a.type),
+  );
+  const valuationsQuery = useQuery({
+    queryKey: ['valuations', 'all'],
+    queryFn: fetchValuations,
+    enabled: hasValued,
+    ...(initialValuations ? { initialData: initialValuations } : {}),
+  });
 
   const netWorth = netWorthQuery.data;
   const recent = recentQuery.data ?? [];
@@ -81,6 +98,10 @@ export function DashboardView({
 
   const isEmpty = netWorth.accounts.length === 0 && recent.length === 0;
   if (isEmpty) return <EmptyState />;
+
+  const valuedAccounts = netWorth.accounts.filter((a) =>
+    isValuedAccount(a.type),
+  );
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -106,6 +127,13 @@ export function DashboardView({
             <SavingsRateCard totals={incomeQuery.data} period={period} />
           ) : null}
           <AccountsBreakdown accounts={netWorth.accounts} />
+          {/* Valued accounts only — hidden entirely when there are none. */}
+          {valuedAccounts.length > 0 ? (
+            <ValuationStatusCard
+              accounts={valuedAccounts}
+              valuations={valuationsQuery.data ?? []}
+            />
+          ) : null}
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import type {
   AccountPatch,
   NewAccount,
   NewValuation,
+  Valuation,
 } from '@/lib/api/types';
 
 /**
@@ -43,4 +44,11 @@ export function updateAccount(id: string, patch: AccountPatch): Promise<Account>
 
 export function recordValuation(input: NewValuation): Promise<unknown> {
   return fetch('/api/valuations', jsonInit('POST', input)).then(parse<unknown>);
+}
+
+/** All the user's valuation snapshots (asOf desc) — for last-valued dates. */
+export function fetchValuations(): Promise<Valuation[]> {
+  return fetch('/api/valuations', { cache: 'no-store' }).then(
+    parse<Valuation[]>,
+  );
 }
