@@ -45,6 +45,14 @@ for any detail not covered here.
 - **UI kit:** shadcn/ui (Radix + Tailwind + CSS variables), components vendored into
   components/ui and owned in-repo — NOT a runtime dependency. The default look (zinc / Inter
   / uniform radii) is always overridden by the Tally tokens below; never ship shadcn defaults.
+- **Dropdowns:** every dropdown / single-select control in apps/web uses the vendored shadcn
+  Select (`components/ui/select.tsx`), Tally-themed — never a native `<select>` or an ad-hoc
+  div/button dropdown. Two established patterns, follow them for consistency: (1) where an
+  empty-string value is a real selectable "All"/"none" option, map it via the `__all__`
+  sentinel — Radix Select cannot use `""` as a `SelectItem` value; (2) where `""` means
+  "unselected", pass it through as the control's value and let it fall through to the
+  `SelectValue` placeholder (no item renders for it). Intentional segmented button groups
+  (e.g. the transaction-kind picker) are not dropdowns and are exempt.
 - **Session (BFF):** Next.js route handlers proxy the Nest auth endpoints. Access + refresh
   JWTs live in httpOnly, SameSite cookies; the browser never holds the raw token. Middleware
   and server components read the session server-side. F1 inspects how authbp emits tokens
