@@ -1,10 +1,22 @@
-import { Placeholder } from '@/components/shell/placeholder';
+import { nestFetch } from '@/lib/api/nest-fetch';
+import type { Account, Category } from '@/lib/api/types';
+import { ExportView } from '@/components/export/export-view';
 
-export default function ExportPage() {
+// Server component: seeds the accounts + categories that populate the export
+// filter dropdowns through the F1 session. The export download itself runs
+// client-side against the BFF.
+export default async function ExportPage() {
+  const [accRes, catRes] = await Promise.all([
+    nestFetch('/accounts'),
+    nestFetch('/categories'),
+  ]);
+
   return (
-    <Placeholder
-      title="Export"
-      note="Filtered CSV export and download UX arrive in F6."
+    <ExportView
+      initialAccounts={accRes.status === 200 ? (accRes.data as Account[]) : null}
+      initialCategories={
+        catRes.status === 200 ? (catRes.data as Category[]) : null
+      }
     />
   );
 }
