@@ -21,9 +21,11 @@ import { fetchCategories } from '@/lib/categories/api';
 import {
   deleteTransaction,
   fetchTransactions,
+  fetchTransactionsCsv,
   updateTransaction,
 } from '@/lib/transactions/api';
 import { Button } from '@/components/ui/button';
+import { TableExportButton } from '@/components/table-export-button';
 import {
   Dialog,
   DialogContent,
@@ -162,14 +164,28 @@ export function TransactionsView({
     setPage(1);
   }
 
+  // Export reflects the ACTIVE FILTERS, not the current page: only the scoping
+  // fields go to the server export (which returns all matching rows) — never
+  // page/pageSize.
+  const exportFilters = {
+    accountId: serverFilters.accountId,
+    categoryId: serverFilters.categoryId,
+    kind: serverFilters.kind,
+    from: serverFilters.from,
+    to: serverFilters.to,
+  };
+
   return (
     <div className="flex w-full flex-col gap-6">
-      <header>
-        <h1 className="font-display text-2xl font-semibold">Transactions</h1>
-        <p className="text-sm text-muted-foreground">
-          Every movement across your accounts. Record new ones with Quick add in
-          the sidebar.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-semibold">Transactions</h1>
+          <p className="text-sm text-muted-foreground">
+            Every movement across your accounts. Record new ones with Quick add
+            in the sidebar.
+          </p>
+        </div>
+        <TableExportButton getCsv={() => fetchTransactionsCsv(exportFilters)} />
       </header>
 
       <TransactionFilters

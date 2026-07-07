@@ -152,35 +152,39 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 
 ## Frontend (apps/web) — v1
 
-- [ ] **F0 · Scaffold & foundations**
-  - [ ] Next.js App Router in apps/web; wired as an npm workspace
-  - [ ] shadcn/ui init + Tally theme override (tokens in CLAUDE.md); never the default zinc/Inter
-  - [ ] Design tokens as CSS variables, per docs/tally-dashboard.html
-  - [ ] TanStack Query provider + invalidation-map skeleton
-  - [ ] Typed API client (money-as-string) + single API_BASE env
-  - [ ] Route groups (auth)/(app); lucide-react icons
-- [ ] **F1 · Auth & shell**
-  - [ ] BFF auth route handlers proxying Nest
-  - [ ] httpOnly + SameSite cookie session; browser never holds the raw token
-  - [ ] Protected-route middleware
-  - [ ] Login / register screens
-  - [ ] App nav shell matching docs/tally-dashboard.html
-- [ ] **F2 · Accounts**
-  - [ ] List / create / edit / archive
-  - [ ] Derived-balance display
-  - [ ] Valuation-snapshot entry for INVESTMENT + MICROLOANS
-- [ ] **F3 · Transactions + quick-add**
-  - [ ] Quick-add hero
-  - [ ] Filtered list; edit / delete
-  - [ ] Single-row transfer UI (account → toAccount, no category)
-- [ ] **F4 · Categories**
-  - [ ] One-level-nested management
-  - [ ] Kind constraints mirrored from backend
-- [ ] **F5 · Dashboard**
-  - [ ] Net worth; parent + children rollups
-  - [ ] Income / expense / saved summaries; transfers excluded
+- [x] **F0 · Scaffold & foundations**
+  - [x] Next.js App Router in apps/web; wired as an npm workspace
+  - [x] shadcn/ui init + Tally theme override (tokens in CLAUDE.md); never the default zinc/Inter
+  - [x] Design tokens as CSS variables, per docs/tally-dashboard.html
+  - [x] TanStack Query provider + invalidation-map skeleton
+  - [x] Typed API client (money-as-string) + single API_BASE env
+  - [x] Route groups (auth)/(app); lucide-react icons
+- [x] **F1 · Auth & shell**
+  - [x] BFF auth route handlers proxying Nest
+  - [x] httpOnly + SameSite cookie session; browser never holds the raw token
+  - [x] Protected-route middleware
+  - [x] Login / register screens
+  - [x] App nav shell matching docs/tally-dashboard.html
+- [x] **F2 · Accounts**
+  - [x] List / create / edit / archive
+  - [x] Derived-balance display
+  - [x] Valuation-snapshot entry for INVESTMENT + MICROLOANS
+- [x] **F3 · Transactions + quick-add**
+  - [x] Quick-add hero
+  - [x] Filtered list; edit / delete
+  - [x] Single-row transfer UI (account → toAccount, no category)
+- [x] **F4 · Categories**
+  - [x] One-level-nested management
+  - [x] Kind constraints mirrored from backend
+- [x] **F5 · Dashboard**
+  - [x] Net worth; parent + children rollups
+  - [x] Income / expense / saved summaries; transfers excluded
 - [ ] **F6 · CSV export**
-  - [ ] Filtered trigger + download UX
+  - [x] Filtered export endpoint + standalone export screen (CSV serialized server-side)
+  - [x] Reusable per-table "Export CSV" button (`components/table-export-button.tsx`) that
+    DELEGATES to the server export — wired into Transactions; exports all rows matching the
+    active filters (account, category, kind, date range), never just the current page
+  - [ ] Wire the button into remaining tables; then retire the standalone export screen
 - [ ] **F7 · Polish & deploy**
   - [ ] Mobile passes; empty / loading / error states
   - [ ] Docker + Caddy for web beside api
