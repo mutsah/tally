@@ -184,7 +184,10 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
   - [x] Reusable per-table "Export CSV" button (`components/table-export-button.tsx`) that
     DELEGATES to the server export — wired into Transactions; exports all rows matching the
     active filters (account, category, kind, date range), never just the current page
-  - [ ] Wire the button into remaining tables; then retire the standalone export screen
+  - [x] Client-side CSV path: shared `lib/csv/to-csv.ts` (RFC-4180, string-in/string-out —
+    preserves money-as-string) + Accounts export (`lib/accounts/csv.ts`) via the same button;
+    exports the full list incl. archived, with raw `balance` strings
+  - [ ] Categories per-table export (reuse `to-csv.ts`); then retire the standalone export screen
 - [ ] **F7 · Polish & deploy**
   - [ ] Mobile passes; empty / loading / error states
   - [ ] Docker + Caddy for web beside api

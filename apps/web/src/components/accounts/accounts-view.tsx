@@ -6,9 +6,11 @@ import { X } from 'lucide-react';
 import type { Account } from '@/lib/api/types';
 import { queryKeys, invalidates } from '@/lib/query-keys';
 import { fetchAccounts, createAccount } from '@/lib/accounts/api';
+import { buildAccountsCsv } from '@/lib/accounts/csv';
 import { createOpeningBalance, fetchTransactions } from '@/lib/transactions/api';
 import { isValuedAccount } from '@/lib/money';
 import { Button } from '@/components/ui/button';
+import { TableExportButton } from '@/components/table-export-button';
 import {
   Dialog,
   DialogContent,
@@ -124,7 +126,13 @@ export function AccountsView({
             Where your money sits. Balances update as transactions land.
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>New account</Button>
+        <div className="flex items-center gap-2">
+          <TableExportButton
+            getCsv={() => Promise.resolve(buildAccountsCsv(accounts))}
+            disabled={!accountsQuery.data}
+          />
+          <Button onClick={() => setCreating(true)}>New account</Button>
+        </div>
       </header>
 
       {notice ? (
