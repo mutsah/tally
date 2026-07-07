@@ -11,18 +11,22 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 
 ## Status
 
-- **Phase:** 7 complete — CSV export. **v1 backend feature-complete** (Phases 1–7); **Phase 8
-  (Hardening) next**
-- **Done:** Phases 0–7 complete. Scaffold + auth (`0f72e2c`); Accounts + `TenantScopedService`
+- **Phase:** F0–F6 complete — full frontend spine shipped (accounts, transactions/transfers,
+  categories, dashboard) plus per-table CSV export. Backend Phases 1–7 complete; Phase 8
+  (Hardening) items still deferred. The reshaped **Post-F6 roadmap (2026-07-07)** is now the
+  active plan.
+- **Done:** Backend Phases 0–7 — Scaffold + auth (`0f72e2c`); Accounts + `TenantScopedService`
   scoping (`42de542`); test green-up (`c288b49`); Categories + transactional seeding (`5012a92`);
   Transactions income/expense CRUD + money-as-string interceptor (`faa4899`); single-row transfers
   (`0640a34`); derived account balances (`45305f7`); Valuations + latest-snapshot balance
-  integration (`8a0193d`); Dashboard aggregation endpoints (`052e751`); CSV export (this commit).
-  Deferred to Phase 8: the accounts/categories in-use delete guards.
-- **Next action:** **Phase 8 — Hardening.** Wire ThrottlerGuard globally; env-var validation on
-  boot; consistent error envelope; the deferred in-use delete guards; plus the other Phase 8
-  items. Then Phase 9 (frontend).
-- **Last updated:** 2026-06-30
+  integration (`8a0193d`); Dashboard aggregation endpoints (`052e751`); CSV export endpoint.
+  Frontend F0–F6 — scaffold/auth/shell, accounts, transactions, categories, dashboard, and
+  per-table CSV export (through `715498a`; roadmap reshape `8c639f2`). Deferred to Phase 8: the
+  accounts/categories in-use delete guards.
+- **Next action:** **Track 1 — valuations removal + nav cleanup** (see "Post-F6 roadmap —
+  reshaped 2026-07-07"). Backend Phase 8 hardening remains deferred behind Tracks 1–5; F7 deploy
+  is last.
+- **Last updated:** 2026-07-07
 
 ---
 
