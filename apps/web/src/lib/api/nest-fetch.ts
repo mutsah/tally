@@ -35,11 +35,15 @@ function call(
   });
 }
 
-export async function nestFetch(
+/**
+ * Token-forwarded call returning the RAW Response (headers + body intact) — for
+ * non-JSON payloads like the CSV export. Rotates once on a 401 when allowed.
+ */
+export async function nestFetchRaw(
   path: string,
   init: RequestInit = {},
   opts: { allowRefresh?: boolean } = {},
-): Promise<NestResponse> {
+): Promise<Response> {
   const store = await cookies();
   const access = store.get(COOKIE.access)?.value;
   let res = await call(path, init, access);
@@ -62,6 +66,15 @@ export async function nestFetch(
     }
   }
 
+  return res;
+}
+
+export async function nestFetch(
+  path: string,
+  init: RequestInit = {},
+  opts: { allowRefresh?: boolean } = {},
+): Promise<NestResponse> {
+  const res = await nestFetchRaw(path, init, opts);
   let data: unknown = null;
   try {
     data = await res.json();
