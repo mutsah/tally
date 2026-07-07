@@ -11,8 +11,10 @@ import {
   fetchCategories,
   updateCategory,
 } from '@/lib/categories/api';
+import { buildCategoriesCsv } from '@/lib/categories/csv';
 import { ApiError } from '@/lib/api/http';
 import { Button } from '@/components/ui/button';
+import { TableExportButton } from '@/components/table-export-button';
 import {
   Dialog,
   DialogContent,
@@ -139,7 +141,13 @@ export function CategoriesView({
             under a parent.
           </p>
         </div>
-        <Button onClick={() => setCreateKind('EXPENSE')}>New category</Button>
+        <div className="flex items-center gap-2">
+          <TableExportButton
+            getCsv={() => Promise.resolve(buildCategoriesCsv(categories))}
+            disabled={!categoriesQuery.data}
+          />
+          <Button onClick={() => setCreateKind('EXPENSE')}>New category</Button>
+        </div>
       </header>
 
       {isError ? (

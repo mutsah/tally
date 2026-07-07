@@ -187,7 +187,10 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
   - [x] Client-side CSV path: shared `lib/csv/to-csv.ts` (RFC-4180, string-in/string-out —
     preserves money-as-string) + Accounts export (`lib/accounts/csv.ts`) via the same button;
     exports the full list incl. archived, with raw `balance` strings
-  - [ ] Categories per-table export (reuse `to-csv.ts`); then retire the standalone export screen
+  - [x] Categories export (`lib/categories/csv.ts`, reuses `to-csv.ts`; `parent` emitted as the
+    readable name, empty for top-level). Per-table export now on ALL three tables —
+    Transactions, Accounts, Categories
+  - [ ] Retire the standalone export screen + its `/export` nav entry (only remaining F6 item)
 - [ ] **F7 · Polish & deploy**
   - [ ] Mobile passes; empty / loading / error states
   - [ ] Docker + Caddy for web beside api
