@@ -4,7 +4,6 @@ import {
   ArrowRightLeft,
   Tags,
   BarChart3,
-  Download,
   Settings2,
   HelpCircle,
   type LucideIcon,
@@ -36,7 +35,6 @@ export const navGroups: NavGroup[] = [
     label: 'Manage',
     items: [
       { href: '/valuations', label: 'Valuations', icon: BarChart3 },
-      { href: '/export', label: 'Export', icon: Download },
     ],
   },
   {

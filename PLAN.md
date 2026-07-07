@@ -179,8 +179,9 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
 - [x] **F5 · Dashboard**
   - [x] Net worth; parent + children rollups
   - [x] Income / expense / saved summaries; transfers excluded
-- [ ] **F6 · CSV export**
-  - [x] Filtered export endpoint + standalone export screen (CSV serialized server-side)
+- [x] **F6 · CSV export**
+  - [x] Filtered export endpoint + client fetch (`fetchTransactionsCsv`, BFF proxy) — the
+    server-serialized CSV foundation (kept; the Transactions button uses it)
   - [x] Reusable per-table "Export CSV" button (`components/table-export-button.tsx`) that
     DELEGATES to the server export — wired into Transactions; exports all rows matching the
     active filters (account, category, kind, date range), never just the current page
@@ -190,7 +191,8 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
   - [x] Categories export (`lib/categories/csv.ts`, reuses `to-csv.ts`; `parent` emitted as the
     readable name, empty for top-level). Per-table export now on ALL three tables —
     Transactions, Accounts, Categories
-  - [ ] Retire the standalone export screen + its `/export` nav entry (only remaining F6 item)
+  - [x] Retired the standalone `/export` screen (route + view + nav entry + middleware path) —
+    CSV export now lives per-table on Transactions, Accounts, Categories. **F6 complete.**
 - [ ] **F7 · Polish & deploy**
   - [ ] Mobile passes; empty / loading / error states
   - [ ] Docker + Caddy for web beside api

@@ -13,7 +13,6 @@ const PROTECTED = [
   '/transactions',
   '/categories',
   '/valuations',
-  '/export',
   '/settings',
   '/help',
 ];
