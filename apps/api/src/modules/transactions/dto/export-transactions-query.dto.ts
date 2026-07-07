@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsOptional, IsUUID } from 'class-validator';
+import { TransactionKind } from '@prisma/client';
+import { IsDateString, IsEnum, IsOptional, IsUUID } from 'class-validator';
 
 // Same filters as GET /transactions, minus pagination — the export returns the
 // full filtered set.
@@ -16,6 +17,14 @@ export class ExportTransactionsQueryDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter by kind (INCOME, EXPENSE, TRANSFER, OPENING)',
+    enum: TransactionKind,
+  })
+  @IsOptional()
+  @IsEnum(TransactionKind)
+  kind?: TransactionKind;
 
   @ApiPropertyOptional({
     description: 'Start of date range, inclusive (ISO 8601)',

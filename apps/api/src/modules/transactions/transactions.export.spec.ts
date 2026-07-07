@@ -160,6 +160,15 @@ describe('Transactions CSV export', () => {
     expect(l[1]).toContain('TRANSFER'); // only the 06-12 transfer is in range
   });
 
+  it('applies the kind filter (export mirrors the list)', async () => {
+    const csv = await service.exportCsv(A, { kind: 'TRANSFER' as never });
+    const l = lines(csv);
+    // Only the transfer row (plus header); the expense is filtered out.
+    expect(l).toHaveLength(2);
+    expect(l[1]).toContain('TRANSFER');
+    expect(csv).not.toContain('EXPENSE');
+  });
+
   it('an empty result set is a header-only CSV', async () => {
     const csv = await service.exportCsv(A, { accountId: 'nope' });
     expect(csv).toBe('date,kind,amount,account,toAccount,category,note');
