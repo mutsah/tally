@@ -193,9 +193,78 @@ Claude Code — can resume from exactly here. This file lives in the repo, not i
     Transactions, Accounts, Categories
   - [x] Retired the standalone `/export` screen (route + view + nav entry + middleware path) —
     CSV export now lives per-table on Transactions, Accounts, Categories. **F6 complete.**
-- [ ] **F7 · Polish & deploy**
+- [ ] **F7 · Polish & deploy** — _re-noted 2026-07-07: moved to the END of the roadmap; now
+  sits behind Tracks 1–5 (see "Post-F6 roadmap" below)._
   - [ ] Mobile passes; empty / loading / error states
   - [ ] Docker + Caddy for web beside api
+
+---
+
+## Post-F6 roadmap — reshaped 2026-07-07
+
+**Descope note**
+
+Valuations as a dedicated screen/table is CUT (not wanted). v3 (deep investment tracking: lots,
+cost basis, realized/unrealized, XIRR) is CUT.
+- REMOVE: /valuations stub route + its nav entry; the dashboard valuation-status card (its slot
+  becomes the Track 4 budget-adherence chart); and /valuations (and /help) from middleware
+  PROTECTED if present.
+- KEEP — LOAD-BEARING, MUST NOT REMOVE: the valuation ENTRY flow in the Accounts screen ("record
+  value" form) and the valued-account balance logic in `balanceFor`. INVESTMENT/MICROLOANS
+  accounts derive their balance from the latest `AccountValuation` snapshot; removing this breaks
+  their balances. The backend valuations module + its tests stay.
+
+**Build order** (each track: backend→frontend where applicable; one commit per concern;
+code-review gate before every commit)
+
+### Track 1 — Valuations removal + nav cleanup
+- [ ] Delete /valuations stub route (`app/(app)/valuations/page.tsx`) + its nav entry
+- [ ] Remove the Help stub's nav entry (Help stays unbuilt — just not advertised as a dead link)
+- [ ] Remove /valuations (+ /help) from middleware PROTECTED if present (deliberate, like the
+      /export retire)
+- [ ] KEEP valuation entry, valued-account balance logic, backend valuations module (per descope
+      note)
+
+### Track 2 — Settings (tabbed)
+- [ ] Backend: NEW authenticated change-password endpoint (existing reset endpoints are
+      logged-out forgot-password; no authenticated change-password exists) + tests; match the auth
+      module's existing hashing/validation conventions
+- [ ] Frontend: Settings screen with tabs
+  - [ ] Profile tab: editable display name, email shown, account-created date
+  - [ ] Security tab: change password (current → new), wired to the new endpoint
+  - [ ] DECISION PENDING: Data tab (export-everything) — include or skip? (per-table CSV already
+        exists)
+  - [ ] Preferences tab: SKIPPED (USD-only, fixed design system — nothing genuine to expose yet)
+
+### Track 3 — Budgets (v2)
+- [ ] Backend: budget schema (per-category monthly limit; carries userId from day 1 per the
+      multi-tenant convention), CRUD endpoint, tests
+- [ ] Frontend: budget entry — DECISION PENDING: dedicated Budgets screen (+nav) vs. inline
+      monthly-limit field on the Categories screen
+- [ ] Note: budgets are the "budgeted" half Track 4 needs — must exist before Track 4
+
+### Track 4 — Budget-adherence chart (dashboard)
+- [ ] Replace the removed valuation-status card slot with a budget-adherence chart:
+      spent-vs-budgeted per category, current month, over/under flagged
+- [ ] Depends on Track 3 (no budgets = nothing to plot)
+
+### Track 5 — Analytics / Reports (deep reports)
+- [ ] Additive Reports section (the F5 summary dashboard stays as-is); gets its own scoping pass
+      before build
+- [ ] MVP report set:
+  - [ ] Spending-by-category over time (month-over-month + drilldown)
+  - [ ] Savings-rate trend + net cash flow per period
+  - [ ] Leak detection (fastest-growing categories vs trailing avg; recurring/subscription
+        heuristic; anomaly flags) — heuristics, labeled as such
+  - [ ] Budget-adherence over time (now possible once Track 3 lands)
+  - [ ] Net-worth-over-time: DEMOTED (valuations cut → no valued-account history). Optional
+        cash/bank-only version if wanted.
+- [ ] Boundaries (data not collected): true investment returns/XIRR (needs cut v3), merchant
+      analysis (no merchant field), forecasting beyond naive run-rate
+
+### F7 — Deploy (moved to END)
+- [ ] Polish pass + Docker/Caddy deploy to Oracle ARM VM — last infra phase; now sits behind
+      Tracks 1–5
 
 ---
 
