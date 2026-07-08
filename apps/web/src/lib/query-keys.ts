@@ -9,6 +9,7 @@ export const queryKeys = {
   accounts: ['accounts'] as const,
   transactions: ['transactions'] as const,
   categories: ['categories'] as const,
+  budgets: ['budgets'] as const,
   dashboard: ['dashboard'] as const,
   valuations: (accountId: string) => ['valuations', accountId] as const,
 };
@@ -18,6 +19,7 @@ export type QueryKey =
   | typeof queryKeys.accounts
   | typeof queryKeys.transactions
   | typeof queryKeys.categories
+  | typeof queryKeys.budgets
   | typeof queryKeys.dashboard
   | ReturnType<typeof queryKeys.valuations>;
 
@@ -33,6 +35,8 @@ export const invalidates = {
   ],
   account: (): QueryKey[] => [queryKeys.accounts, queryKeys.dashboard],
   category: (): QueryKey[] => [queryKeys.categories, queryKeys.dashboard],
+  // Budgets feed the dashboard's budget-adherence chart (Track 4).
+  budget: (): QueryKey[] => [queryKeys.budgets, queryKeys.dashboard],
   valuation: (accountId: string): QueryKey[] => [
     queryKeys.accounts,
     queryKeys.dashboard,

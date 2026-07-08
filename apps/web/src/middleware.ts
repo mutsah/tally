@@ -12,6 +12,7 @@ const PROTECTED = [
   '/accounts',
   '/transactions',
   '/categories',
+  '/budgets',
   '/settings',
 ];
 const AUTH = ['/login', '/register'];

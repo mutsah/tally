@@ -264,9 +264,15 @@ code-review gate before every commit)
 - [x] Backend (Profile, from Track 2 follow-up): `GET /auth/me` + `PATCH /auth/me` (display name)
       shipped in this commit — self-scoped by session userId, never returns the password hash.
       Unblocks making the Settings Profile tab editable (frontend follow-up).
-- [ ] Frontend: budget entry — DECIDED: a dedicated Budgets screen + its own nav entry (not an
-      inline field on Categories).
-- [ ] Note: budgets are the "budgeted" half Track 4 needs — must exist before Track 4
+- [x] Frontend: dedicated Budgets screen (`/budgets`) + nav entry (PiggyBank, in Main) + middleware
+      PROTECTED — SHIPPED. Lists EXPENSE categories, each with a monthly-limit input: set (create),
+      update (patch), clear (delete); 409 "already budgeted" auto-recovers as an update. Amounts sent
+      as raw strings, displayed via formatMoney (no float coercion). Budgets BFF proxy routes
+      (`app/api/budgets/route.ts` + `[id]/route.ts`, same-origin guarded, auth-forwarding); TanStack
+      invalidation via `invalidates.budget()`. Verified end-to-end through the web BFF (create/update/
+      clear, expense-only 400, duplicate 409, money-as-string).
+- [x] Note: budgets are the "budgeted" half Track 4 needs — now EXIST, so Track 4 (budget-adherence
+      chart) is UNBLOCKED (there are budgets to plot spent-vs-budgeted against).
 
 ### Track 4 — Budget-adherence chart (dashboard)
 - [ ] Replace the removed valuation-status card slot with a budget-adherence chart:

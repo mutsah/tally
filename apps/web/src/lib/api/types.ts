@@ -144,6 +144,26 @@ export interface CategoryPatch {
   parentId?: string | null;
 }
 
+// ── Budgets (one monthly limit per EXPENSE category; amount is a string) ───────
+// GET /budgets returns the user's budgets; `amount` is money-as-string.
+export interface Budget {
+  id: string;
+  categoryId: string;
+  amount: Money;
+}
+
+// Create — the API rejects a non-expense category and a category already budgeted
+// (409). `amount` is a raw money string (> 0, ≤2dp); never coerced to a number.
+export interface NewBudget {
+  categoryId: string;
+  amount: string;
+}
+
+// PATCH — only the monthly limit changes.
+export interface BudgetPatch {
+  amount: string;
+}
+
 // ── Dashboard (4 read-only endpoints; all money is strings) ───────────────────
 // GET /dashboard/net-worth — non-archived accounts, balance derived (CASH/BANK)
 // or from the latest valuation (INVESTMENT/MICROLOANS).

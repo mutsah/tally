@@ -3,6 +3,7 @@ import {
   Wallet,
   ArrowRightLeft,
   Tags,
+  PiggyBank,
   Settings2,
   type LucideIcon,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ export const navGroups: NavGroup[] = [
       { href: '/accounts', label: 'Accounts', icon: Wallet },
       { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
       { href: '/categories', label: 'Categories', icon: Tags },
+      { href: '/budgets', label: 'Budgets', icon: PiggyBank },
     ],
   },
   {
