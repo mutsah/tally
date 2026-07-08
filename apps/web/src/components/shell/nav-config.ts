@@ -3,9 +3,7 @@ import {
   Wallet,
   ArrowRightLeft,
   Tags,
-  BarChart3,
   Settings2,
-  HelpCircle,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -20,7 +18,7 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-// Grouped nav from docs/tally-dashboard.html (Main / Manage / Other).
+// Grouped nav from docs/tally-dashboard.html (Main / Other).
 export const navGroups: NavGroup[] = [
   {
     label: 'Main',
@@ -32,16 +30,7 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: 'Manage',
-    items: [
-      { href: '/valuations', label: 'Valuations', icon: BarChart3 },
-    ],
-  },
-  {
     label: 'Other',
-    items: [
-      { href: '/settings', label: 'Settings', icon: Settings2 },
-      { href: '/help', label: 'Help', icon: HelpCircle },
-    ],
+    items: [{ href: '/settings', label: 'Settings', icon: Settings2 }],
   },
 ];

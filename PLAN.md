@@ -221,30 +221,34 @@ cost basis, realized/unrealized, XIRR) is CUT.
 **Build order** (each track: backend→frontend where applicable; one commit per concern;
 code-review gate before every commit)
 
-### Track 1 — Valuations removal + nav cleanup
-- [ ] Delete /valuations stub route (`app/(app)/valuations/page.tsx`) + its nav entry
-- [ ] Remove the Help stub's nav entry (Help stays unbuilt — just not advertised as a dead link)
-- [ ] Remove /valuations (+ /help) from middleware PROTECTED if present (deliberate, like the
-      /export retire)
-- [ ] KEEP valuation entry, valued-account balance logic, backend valuations module (per descope
-      note)
+### Track 1 — Valuations removal + nav cleanup ✓ (done 2026-07-08)
+- [x] Delete /valuations stub route (`app/(app)/valuations/page.tsx`) + its nav entry (removing
+      the sole "Manage"-group item, so that empty group was dropped too)
+- [x] Help stub FULLY removed — route (`app/(app)/help/page.tsx`), nav entry, AND middleware
+      PROTECTED entry all deleted (went beyond "just unlink": the route is gone, so it no longer
+      needs guarding and now 404s, like /valuations)
+- [x] Remove /valuations (+ /help) from middleware PROTECTED (deliberate, like the /export retire)
+- [x] KEEP valuation entry, valued-account balance logic, backend valuations module (untouched);
+      the dashboard valuation-status card also KEPT — its removal is Track 4, not here
 
 ### Track 2 — Settings (tabbed)
 - [ ] Backend: NEW authenticated change-password endpoint (existing reset endpoints are
       logged-out forgot-password; no authenticated change-password exists) + tests; match the auth
-      module's existing hashing/validation conventions
+      module's existing hashing/validation conventions. DECIDED: change-password re-verifies the
+      current password (compare current → then hash+store new); reject on mismatch.
 - [ ] Frontend: Settings screen with tabs
   - [ ] Profile tab: editable display name, email shown, account-created date
   - [ ] Security tab: change password (current → new), wired to the new endpoint
-  - [ ] DECISION PENDING: Data tab (export-everything) — include or skip? (per-table CSV already
-        exists)
+  - [ ] Data tab: SKIPPED (DECIDED — no export-everything tab; per-table CSV already covers it)
   - [ ] Preferences tab: SKIPPED (USD-only, fixed design system — nothing genuine to expose yet)
 
 ### Track 3 — Budgets (v2)
-- [ ] Backend: budget schema (per-category monthly limit; carries userId from day 1 per the
-      multi-tenant convention), CRUD endpoint, tests
-- [ ] Frontend: budget entry — DECISION PENDING: dedicated Budgets screen (+nav) vs. inline
-      monthly-limit field on the Categories screen
+- [ ] Backend: budget schema + CRUD endpoint + tests. DECIDED — model A: ONE monthly limit per
+      category. Budget row = category + monthly amount (Decimal(18,2), money-as-string); carries
+      `userId` from day 1 per the multi-tenant convention; `@@unique([userId, categoryId])`;
+      cascade-delete with its category (a budget can't outlive its category).
+- [ ] Frontend: budget entry — DECIDED: a dedicated Budgets screen + its own nav entry (not an
+      inline field on Categories).
 - [ ] Note: budgets are the "budgeted" half Track 4 needs — must exist before Track 4
 
 ### Track 4 — Budget-adherence chart (dashboard)
