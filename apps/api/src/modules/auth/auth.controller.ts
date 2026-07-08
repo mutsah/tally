@@ -30,6 +30,7 @@ import { LoginDto } from './dto/login.dto';
 import { SendResetLinkDto } from './dto/send-reset-link.dto';
 import { VerifyTokenDto } from './dto/verify-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import type { Request, Response } from 'express';
 import { OAuthUser } from './interfaces/oauth-user.interface';
 
@@ -268,5 +269,38 @@ export class AuthController {
   })
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return await this.authService.resetPassword(resetPasswordDto);
+  }
+
+  // change password (authenticated self-service)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Change password',
+    description:
+      'Authenticated user changes their own password after re-verifying the current one',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Password successfully changed',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Validation failed, or the new password matches the current one',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid token or incorrect current password',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too Many Requests - Rate limit exceeded',
+  })
+  async changePassword(
+    @GetUser('id') userId: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ): Promise<{ success: boolean; message: string }> {
+    return await this.authService.changePassword(userId, changePasswordDto);
   }
 }

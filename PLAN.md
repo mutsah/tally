@@ -232,10 +232,11 @@ code-review gate before every commit)
       the dashboard valuation-status card also KEPT — its removal is Track 4, not here
 
 ### Track 2 — Settings (tabbed)
-- [ ] Backend: NEW authenticated change-password endpoint (existing reset endpoints are
-      logged-out forgot-password; no authenticated change-password exists) + tests; match the auth
-      module's existing hashing/validation conventions. DECIDED: change-password re-verifies the
-      current password (compare current → then hash+store new); reject on mismatch.
+- [x] Backend: authenticated change-password endpoint (`POST /auth/change-password`,
+      JwtAuthGuard, userId from the session) + tests — SHIPPED. Reuses the auth module's bcrypt
+      hash/verify (SALT_ROUNDS 12) and the registration password policy; re-verifies current →
+      then hash+store new; rejects wrong-current (401) and no-op same-password (400). (Reset
+      flow's weaker min-8/no-complexity rule left as a pre-existing Phase 8 hardening item.)
 - [ ] Frontend: Settings screen with tabs
   - [ ] Profile tab: editable display name, email shown, account-created date
   - [ ] Security tab: change password (current → new), wired to the new endpoint

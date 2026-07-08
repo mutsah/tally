@@ -19,6 +19,7 @@ import { SendResetLinkDto } from './dto/send-reset-link.dto';
 import { MailService } from '../mail/mail.service';
 import { VerifyTokenDto } from './dto/verify-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { OAuthUser } from './interfaces/oauth-user.interface';
 import { STARTER_CATEGORIES } from 'src/modules/categories/starter-categories';
 
@@ -333,6 +334,45 @@ export class AuthService {
         'Failed to reset password. Please try again later.',
       );
     }
+  }
+
+  // change password (authenticated self-service)
+  async changePassword(
+    userId: string,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<{ success: boolean; message: string }> {
+    const { currentPassword, newPassword } = changePasswordDto;
+
+    // Reject a no-op change up front (cheap input check, no DB hit). Both values
+    // are supplied by the same authenticated caller, so this leaks nothing.
+    if (currentPassword === newPassword) {
+      throw new BadRequestException(
+        'New password must be different from the current password',
+      );
+    }
+
+    // Self-service only: the user is loaded by the id from the JWT (never the
+    // request body), so a caller can only ever change their own password.
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Re-verify the current password before any write (same bcrypt.compare login
+    // uses). Wrong current password → 401, matching login's bad-credential shape.
+    const currentMatches = await bcrypt.compare(currentPassword, user.password);
+    if (!currentMatches) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return { success: true, message: 'Password changed successfully' };
   }
 
   private async generateResetReference() {
