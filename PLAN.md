@@ -237,11 +237,20 @@ code-review gate before every commit)
       hash/verify (SALT_ROUNDS 12) and the registration password policy; re-verifies current →
       then hash+store new; rejects wrong-current (401) and no-op same-password (400). (Reset
       flow's weaker min-8/no-complexity rule left as a pre-existing Phase 8 hardening item.)
-- [ ] Frontend: Settings screen with tabs
-  - [ ] Profile tab: editable display name, email shown, account-created date
-  - [ ] Security tab: change password (current → new), wired to the new endpoint
-  - [ ] Data tab: SKIPPED (DECIDED — no export-everything tab; per-table CSV already covers it)
-  - [ ] Preferences tab: SKIPPED (USD-only, fixed design system — nothing genuine to expose yet)
+- [x] Frontend: Settings screen with tabs — SHIPPED. Replaced the /settings placeholder with a
+      real tabbed screen (Profile + Security) using a vendored shadcn Tabs primitive
+      (`components/ui/tabs.tsx`, `@radix-ui/react-tabs`, Tally-themed).
+  - [~] Profile tab: READ-ONLY this turn — shows name + email from the session (`getSession`).
+        Editable display name + account-created date NOT done: the backend has no profile
+        (GET /me) or update-name endpoint yet. Small backend follow-up (users/profile GET+PATCH)
+        to make it editable — do NOT tick fully until then.
+  - [x] Security tab: change password (current → new + confirm), wired to `POST /auth/change-
+        password` via a same-origin BFF proxy (`app/api/auth/change-password/route.ts`). Client
+        validation mirrors the backend policy (min 6, letter+number); maps 401→"current password
+        is incorrect", surfaces the server's 400 for weak/duplicate. Verified end-to-end against
+        the running API.
+  - [x] Data tab: SKIPPED (DECIDED — no export-everything tab; per-table CSV already covers it)
+  - [x] Preferences tab: SKIPPED (USD-only, fixed design system — nothing genuine to expose yet)
 
 ### Track 3 — Budgets (v2)
 - [ ] Backend: budget schema + CRUD endpoint + tests. DECIDED — model A: ONE monthly limit per
