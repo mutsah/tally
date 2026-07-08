@@ -4,15 +4,14 @@ import { useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import type {
+  Budget,
   IncomeVsExpense,
   NetWorth,
   RecentTransaction,
   SpendingByCategory,
-  Valuation,
 } from '@/lib/api/types';
 import { queryKeys } from '@/lib/query-keys';
-import { isValuedAccount } from '@/lib/money';
-import { fetchValuations } from '@/lib/accounts/api';
+import { fetchBudgets } from '@/lib/budgets/api';
 import {
   fetchIncomeVsExpense,
   fetchNetWorth,
@@ -31,7 +30,7 @@ import { SpendingOverview } from './spending-overview';
 import { StatCards } from './stat-cards';
 import { SavingsRateCard } from './savings-rate-card';
 import { RecentTransactions } from './recent-transactions';
-import { ValuationStatusCard } from './valuation-status-card';
+import { BudgetAdherenceCard } from './budget-adherence-card';
 import { PeriodSelect } from './period-select';
 
 export function DashboardView({
@@ -39,13 +38,13 @@ export function DashboardView({
   initialIncome,
   initialSpending,
   initialRecent,
-  initialValuations,
+  initialBudgets,
 }: {
   initialNetWorth: NetWorth | null;
   initialIncome: IncomeVsExpense | null;
   initialSpending: SpendingByCategory | null;
   initialRecent: RecentTransaction[] | null;
-  initialValuations: Valuation[] | null;
+  initialBudgets: Budget[] | null;
 }) {
   const [period, setPeriod] = useState<PeriodKey>(DEFAULT_PERIOD);
   const range = periodRange(period);
@@ -75,16 +74,19 @@ export function DashboardView({
       ? { initialData: initialSpending }
       : {}),
   });
-  // Last-valued dates for the valuation-status card — one query for all the
-  // user's snapshots (asOf desc), fetched only when they have valued accounts.
-  const hasValued = (netWorthQuery.data?.accounts ?? []).some((a) =>
-    isValuedAccount(a.type),
-  );
-  const valuationsQuery = useQuery({
-    queryKey: ['valuations', 'all'],
-    queryFn: fetchValuations,
-    enabled: hasValued,
-    ...(initialValuations ? { initialData: initialValuations } : {}),
+  // Budget adherence is always for the CURRENT MONTH, independent of the period
+  // selector. Reuses the spending-by-category aggregate pinned to this month —
+  // the key matches the selector's query when it's on 'this-month', so they
+  // share cache (no extra fetch by default). Seeded by the page's this-month SSR.
+  const currentMonthSpendingQuery = useQuery({
+    queryKey: [...queryKeys.dashboard, 'spending-by-category', 'this-month'],
+    queryFn: () => fetchSpendingByCategory(periodRange('this-month')),
+    ...(initialSpending ? { initialData: initialSpending } : {}),
+  });
+  const budgetsQuery = useQuery({
+    queryKey: queryKeys.budgets,
+    queryFn: fetchBudgets,
+    ...(initialBudgets ? { initialData: initialBudgets } : {}),
   });
 
   const netWorth = netWorthQuery.data;
@@ -98,10 +100,6 @@ export function DashboardView({
 
   const isEmpty = netWorth.accounts.length === 0 && recent.length === 0;
   if (isEmpty) return <EmptyState />;
-
-  const valuedAccounts = netWorth.accounts.filter((a) =>
-    isValuedAccount(a.type),
-  );
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -127,13 +125,11 @@ export function DashboardView({
             <SavingsRateCard totals={incomeQuery.data} period={period} />
           ) : null}
           <AccountsBreakdown accounts={netWorth.accounts} />
-          {/* Valued accounts only — hidden entirely when there are none. */}
-          {valuedAccounts.length > 0 ? (
-            <ValuationStatusCard
-              accounts={valuedAccounts}
-              valuations={valuationsQuery.data ?? []}
-            />
-          ) : null}
+          {/* Replaces the former valuation-status card slot (Track 4). */}
+          <BudgetAdherenceCard
+            budgets={budgetsQuery.data ?? []}
+            spending={currentMonthSpendingQuery.data ?? null}
+          />
         </div>
       </div>
     </div>

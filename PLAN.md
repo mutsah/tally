@@ -274,10 +274,19 @@ code-review gate before every commit)
 - [x] Note: budgets are the "budgeted" half Track 4 needs — now EXIST, so Track 4 (budget-adherence
       chart) is UNBLOCKED (there are budgets to plot spent-vs-budgeted against).
 
-### Track 4 — Budget-adherence chart (dashboard)
-- [ ] Replace the removed valuation-status card slot with a budget-adherence chart:
-      spent-vs-budgeted per category, current month, over/under flagged
-- [ ] Depends on Track 3 (no budgets = nothing to plot)
+### Track 4 — Budget-adherence chart (dashboard) ✓ (done 2026-07-08)
+- [x] Budget-adherence card (`components/dashboard/budget-adherence-card.tsx`) in the former
+      valuation-status-card slot: for the CURRENT MONTH, one bar per budgeted expense category —
+      spent vs. limit, over-budget flagged (--neg). READ-ONLY (no budget editing on the dashboard;
+      that stays on /budgets). Reuses the existing `spending-by-category` aggregate pinned to
+      this-month (NO new backend endpoint) + the budgets list; amounts via formatMoney, bar widths
+      display-only geometry (moneyToCents/percentOf) — no money coercion. Verified live: over/under/
+      empty states, money-as-string.
+- [x] Valuation-status CARD removed (the deferred Track 1 removal): deleted `valuation-status-card.tsx`
+      + its dashboard render; dropped the dashboard `nestFetch('/valuations')` (it fed ONLY that card)
+      and the now-orphaned `fetchValuations` client helper. KEPT (load-bearing): the valuation ENTRY
+      flow (`valuation-form.tsx`/`recordValuation`, Accounts screen) and `balanceFor` — untouched.
+- [x] Depended on Track 3 — budgets exist, so the chart has data to plot.
 
 ### Track 5 — Analytics / Reports (deep reports)
 - [ ] Additive Reports section (the F5 summary dashboard stays as-is); gets its own scoping pass
