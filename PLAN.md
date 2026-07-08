@@ -240,10 +240,10 @@ code-review gate before every commit)
 - [x] Frontend: Settings screen with tabs — SHIPPED. Replaced the /settings placeholder with a
       real tabbed screen (Profile + Security) using a vendored shadcn Tabs primitive
       (`components/ui/tabs.tsx`, `@radix-ui/react-tabs`, Tally-themed).
-  - [~] Profile tab: READ-ONLY this turn — shows name + email from the session (`getSession`).
-        Editable display name + account-created date NOT done: the backend has no profile
-        (GET /me) or update-name endpoint yet. Small backend follow-up (users/profile GET+PATCH)
-        to make it editable — do NOT tick fully until then.
+  - [~] Profile tab: READ-ONLY in the UI — shows name + email from the session (`getSession`).
+        Backend now UNBLOCKS editing: `GET /auth/me` + `PATCH /auth/me` (display name) shipped in
+        Track 3's commit. Frontend wiring (make the Profile tab editable) is a small follow-up —
+        do NOT tick fully until the UI uses those endpoints.
   - [x] Security tab: change password (current → new + confirm), wired to `POST /auth/change-
         password` via a same-origin BFF proxy (`app/api/auth/change-password/route.ts`). Client
         validation mirrors the backend policy (min 6, letter+number); maps 401→"current password
@@ -253,10 +253,17 @@ code-review gate before every commit)
   - [x] Preferences tab: SKIPPED (USD-only, fixed design system — nothing genuine to expose yet)
 
 ### Track 3 — Budgets (v2)
-- [ ] Backend: budget schema + CRUD endpoint + tests. DECIDED — model A: ONE monthly limit per
-      category. Budget row = category + monthly amount (Decimal(18,2), money-as-string); carries
-      `userId` from day 1 per the multi-tenant convention; `@@unique([userId, categoryId])`;
-      cascade-delete with its category (a budget can't outlive its category).
+- [x] Backend: budget schema + CRUD endpoint + tests — SHIPPED. Model A: ONE monthly limit per
+      category. `Budget { userId, categoryId, amount Decimal(18,2) }`, `@@unique([userId,
+      categoryId])`, `categoryId` FK `onDelete: Cascade` (budget dies with its category);
+      `userId` from day 1, every query scoped by the session userId (extends `TenantScopedService`).
+      CRUD at `/budgets` (create+409-on-dup, list, get, patch-amount, delete); amount validated
+      >0/≤2dp money-safe (Prisma.Decimal, no floats), serialized as a string by the global
+      interceptor. Cross-user isolation + validation + money-as-string covered by unit tests and
+      verified live (incl. category-cascade removing the budget). Migration `20260708093902_add_budgets`.
+- [x] Backend (Profile, from Track 2 follow-up): `GET /auth/me` + `PATCH /auth/me` (display name)
+      shipped in this commit — self-scoped by session userId, never returns the password hash.
+      Unblocks making the Settings Profile tab editable (frontend follow-up).
 - [ ] Frontend: budget entry — DECIDED: a dedicated Budgets screen + its own nav entry (not an
       inline field on Categories).
 - [ ] Note: budgets are the "budgeted" half Track 4 needs — must exist before Track 4

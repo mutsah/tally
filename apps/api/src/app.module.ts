@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { BudgetsModule } from './modules/budgets/budgets.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { ValuationsModule } from './modules/valuations/valuations.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -27,6 +28,7 @@ import { DecimalToStringInterceptor } from './common/interceptors/decimal-to-str
     AuthModule,
     AccountsModule,
     CategoriesModule,
+    BudgetsModule,
     TransactionsModule,
     ValuationsModule,
     DashboardModule,

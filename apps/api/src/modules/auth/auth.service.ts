@@ -20,6 +20,7 @@ import { MailService } from '../mail/mail.service';
 import { VerifyTokenDto } from './dto/verify-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { OAuthUser } from './interfaces/oauth-user.interface';
 import { STARTER_CATEGORIES } from 'src/modules/categories/starter-categories';
 
@@ -373,6 +374,51 @@ export class AuthService {
     });
 
     return { success: true, message: 'Password changed successfully' };
+  }
+
+  // The fields safe to expose as the user's profile — never the password hash.
+  private static readonly PROFILE_SELECT = {
+    id: true,
+    email: true,
+    firstName: true,
+    lastName: true,
+    createdAt: true,
+  } as const;
+
+  // get the authenticated user's profile (self-scoped by the session userId)
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: AuthService.PROFILE_SELECT,
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return user;
+  }
+
+  // update the authenticated user's display name (self-scoped; never the hash)
+  async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
+    const data: Record<string, string> = {};
+    if (updateProfileDto.firstName !== undefined) {
+      data.firstName = updateProfileDto.firstName;
+    }
+    if (updateProfileDto.lastName !== undefined) {
+      data.lastName = updateProfileDto.lastName;
+    }
+
+    // Nothing to change → return the current profile unchanged.
+    if (Object.keys(data).length === 0) {
+      return this.getProfile(userId);
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: AuthService.PROFILE_SELECT,
+    });
   }
 
   private async generateResetReference() {

@@ -52,6 +52,7 @@ model User {
   categories   Category[]
   transactions Transaction[]
   valuations   AccountValuation[]
+  budgets      Budget[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -74,6 +75,9 @@ model Category {
   children Category[]   @relation("CategoryChildren")
 
   transactions Transaction[]
+  // At most one budget per category (enforced by Budget's @@unique([userId,
+  // categoryId])). Modelled as a list so Prisma needs no single-column unique.
+  budgets      Budget[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -159,6 +163,26 @@ model AccountValuation {
   @@index([userId])
   @@index([accountId, asOf])
   @@map("account_valuations")
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId String
+  // A budget belongs to one category and dies with it (deleting the category
+  // removes its budget row). At most one budget per category per user.
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  // Monthly spending limit for the category. Positive, 2dp; serialized as a
+  // string at the boundary (money-as-string), like every other Decimal.
+  amount     Decimal  @db.Decimal(18, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, categoryId])
+  @@index([userId])
+  @@map("budgets")
 }
 
 model ResetPassword {

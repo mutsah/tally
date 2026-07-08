@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   Res,
@@ -31,6 +32,7 @@ import { SendResetLinkDto } from './dto/send-reset-link.dto';
 import { VerifyTokenDto } from './dto/verify-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import type { Request, Response } from 'express';
 import { OAuthUser } from './interfaces/oauth-user.interface';
 
@@ -302,5 +304,43 @@ export class AuthController {
     @Body() changePasswordDto: ChangePasswordDto,
   ): Promise<{ success: boolean; message: string }> {
     return await this.authService.changePassword(userId, changePasswordDto);
+  }
+
+  // get current user's profile (authenticated)
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get my profile',
+    description: 'Return the authenticated user’s profile (never the password)',
+  })
+  @ApiResponse({ status: 200, description: 'Profile returned' })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or expired JWT token',
+  })
+  async getProfile(@GetUser('id') userId: string) {
+    return await this.authService.getProfile(userId);
+  }
+
+  // update current user's display name (authenticated)
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Update my display name',
+    description: 'Update the authenticated user’s first/last name',
+  })
+  @ApiResponse({ status: 200, description: 'Profile updated' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or expired JWT token',
+  })
+  async updateProfile(
+    @GetUser('id') userId: string,
+    @Body() updateProfileDto: UpdateProfileDto,
+  ) {
+    return await this.authService.updateProfile(userId, updateProfileDto);
   }
 }
