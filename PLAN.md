@@ -301,9 +301,20 @@ code-review gate before every commit)
         rollups (own + children), matching `spending-by-category`. Serves the category breakdown/
         drilldown. Full tests incl. cross-user isolation, transfer/opening exclusion, dense/zero-
         fill, negative net, money-as-string; verified live.
+- **Slice B — backend budget-adherence-over-time ✓ (done 2026-07-08):**
+  - [x] `GET /reports/monthly-budget-adherence?months=` — dense monthly `{budgeted, spent}` TOTALS
+        (not a per-category breakdown; the per-category view is the Track 4 dashboard card).
+        `budgeted` = Σ of the user's CURRENT limits, constant across months by design (budgets have
+        no per-month history — an intentional flat reference line). `spent` = that month's EXPENSE
+        in budgeted categories; child spend rolls into the nearest budgeted parent (single-level
+        nesting), each expense counted at most once.
+  - [x] Extracted Slice A's per-month per-category expense aggregation into ONE shared private
+        method, so `monthly-expense-by-category`, `monthly-budget-adherence` and the Track 4 chart
+        can never disagree. Transfers/OPENING never counted; money stays Prisma.Decimal → string.
+  - [x] Tests: cross-user isolation on all three delegates + a reverse B-only case, dense/zero-fill,
+        flat `budgeted`, unbudgeted-category exclusion, transfer/opening exclusion, no double-count
+        when parent AND child are budgeted, range validation. Verified live.
 - **Remaining Track 5 (pending):**
-  - [ ] Slice B — budget-adherence-over-time (monthly spent-vs-budget per category; builds on
-        Slice A + Track 3 budgets).
   - [ ] Slice C — leak detection (fastest-growing categories vs trailing avg; recurring/
         subscription heuristic; anomaly flags — heuristics, labeled as such) + net cash-flow /
         naive run-rate.
