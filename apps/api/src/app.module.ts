@@ -10,6 +10,7 @@ import { BudgetsModule } from './modules/budgets/budgets.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { ValuationsModule } from './modules/valuations/valuations.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { MailModule } from './modules/mail/mail.module';
@@ -32,6 +33,7 @@ import { DecimalToStringInterceptor } from './common/interceptors/decimal-to-str
     TransactionsModule,
     ValuationsModule,
     DashboardModule,
+    ReportsModule,
     MailModule,
   ],
   controllers: [AppController],
