@@ -99,7 +99,8 @@ describe('ReportsService', () => {
       },
     };
 
-    service = new ReportsService(prismaMock as never);
+    // AccountsService is only used by the runway report; not exercised here.
+    service = new ReportsService(prismaMock as never, {} as never);
   });
 
   const monthOf = (rows: Array<{ month: string }>, m: string) =>

@@ -1,8 +1,43 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, TransactionKind } from '@prisma/client';
+import { AccountType, Prisma, TransactionKind } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { AccountsService } from '../accounts/accounts.service';
 
 const DEFAULT_MONTHS = 12;
+
+// ── Slice C tuning ────────────────────────────────────────────────────────────
+/** How many COMPLETE calendar months form a trailing baseline (burn + leaks). */
+const TRAILING_MONTHS = 3;
+/** A category is a "leak" when its latest complete month exceeds its trailing
+ *  average by more than this ratio (0.25 = +25%). */
+const LEAK_GROWTH_THRESHOLD = 0.25;
+/** Categories whose trailing average is below this are never flagged: a big
+ *  percentage on a trivial baseline is noise, and a 0.00 baseline cannot divide. */
+const LEAK_MIN_BASELINE = '20.00';
+
+/** Snapshot-valued (illiquid) account types — excluded from the runway buffer.
+ *  Mirrors AccountsService.isValued, which is private to that module. */
+const VALUED_TYPES: ReadonlySet<AccountType> = new Set([
+  AccountType.INVESTMENT,
+  AccountType.MICROLOANS,
+]);
+
+export interface Runway {
+  buffer: string; // liquid balance (non-valued, non-archived accounts)
+  monthlyBurn: string; // avg NET outflow (expense − income) per complete month
+  runwayMonths: string | null; // months of buffer at that burn; null when not burning
+}
+
+export interface SpendingLeak {
+  categoryId: string;
+  categoryName: string;
+  currentSpend: string;
+  trailingAverage: string;
+  /** PERCENTAGE increase over the trailing average, 1dp: "25.0" = +25%.
+   *  Only the serialized value is scaled — the threshold test and the sort both
+   *  run on the raw ratio, so no precision is lost at the flagging boundary. */
+  pctIncrease: string;
+}
 
 export interface MonthlyTotals {
   month: string; // 'YYYY-MM'
@@ -33,7 +68,10 @@ export interface MonthlyAdherence {
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly accountsService: AccountsService,
+  ) {}
 
   /**
    * Dense monthly income / expense / net for the trailing `months` calendar
@@ -52,27 +90,11 @@ export class ReportsService {
     months: number = DEFAULT_MONTHS,
     now: Date = new Date(),
   ): Promise<MonthlyTotals[]> {
-    const { gte, lte } = monthRange(now, months);
-    const rows = await this.prisma.transaction.findMany({
-      where: {
-        userId,
-        kind: { in: [TransactionKind.INCOME, TransactionKind.EXPENSE] },
-        date: { gte, lte },
-      },
-      select: { amount: true, date: true, kind: true },
-    });
-
-    const income = zeroFilledMonths(now, months);
-    const expense = zeroFilledMonths(now, months);
-    for (const r of rows) {
-      const key = monthKeyOf(r.date);
-      if (!income.has(key)) continue; // defensive: outside the dense range
-      if (r.kind === TransactionKind.INCOME) {
-        income.set(key, income.get(key)!.plus(r.amount));
-      } else {
-        expense.set(key, expense.get(key)!.plus(r.amount));
-      }
-    }
+    const { income, expense } = await this.incomeExpenseByMonth(
+      userId,
+      months,
+      now,
+    );
 
     return monthKeys(now, months).map((month) => {
       const inc = income.get(month)!;
@@ -184,11 +206,189 @@ export class ReportsService {
   }
 
   /**
+   * Cash runway — a POINT-IN-TIME snapshot, not a monthly series, so (unlike the
+   * Slice A/B endpoints) it takes no ReportsRangeQueryDto.
+   *
+   * `buffer` is the liquid balance: the summed balance of the caller's non-archived,
+   * NON-VALUED accounts. INVESTMENT/MICROLOANS are excluded — their balance is a
+   * manual snapshot of an illiquid holding, not cash you can spend. It REUSES
+   * AccountsService.findAll (the same grouped-balance aggregation the dashboard's
+   * net worth uses: two grouped aggregates + one valuations query, no per-account
+   * queries), never a second balance path.
+   *
+   * `monthlyBurn` is the average NET outflow (expense − income) over the last
+   * TRAILING_MONTHS COMPLETE calendar months. The in-progress current month is
+   * excluded: a partial month would understate burn. Transfers and opening
+   * balances never count (the income/expense kind whitelist).
+   *
+   * `runwayMonths` = buffer ÷ monthlyBurn, by exact Decimal division, in three
+   * cases:
+   *   - monthlyBurn <= 0 → `null`. Net-positive or break-even: the buffer is not
+   *     being drawn down, so "months of runway" is meaningless. Never Infinity,
+   *     never a divide by zero.
+   *   - buffer <= 0 → `"0.0"`. Already overdrawn: there is no runway left. A raw
+   *     division here would emit a NEGATIVE duration, which is nonsense.
+   *   - otherwise → buffer ÷ monthlyBurn.
+   * It is a DURATION, not currency, so it serializes to 1 decimal place.
+   */
+  async runway(userId: string, now: Date = new Date()): Promise<Runway> {
+    // TRAILING_MONTHS complete months + the partial current month we will drop.
+    const [accounts, { income, expense }] = await Promise.all([
+      this.accountsService.findAll(userId),
+      this.incomeExpenseByMonth(userId, TRAILING_MONTHS + 1, now),
+    ]);
+
+    let buffer = new Prisma.Decimal(0);
+    for (const account of accounts) {
+      if (account.archived || VALUED_TYPES.has(account.type)) continue;
+      buffer = buffer.plus(new Prisma.Decimal(account.balance));
+    }
+
+    let totalOutflow = new Prisma.Decimal(0);
+    for (const month of completeMonthKeys(now, TRAILING_MONTHS)) {
+      // Net outflow for the month; a high-income month offsets its expense.
+      totalOutflow = totalOutflow.plus(
+        expense.get(month)!.minus(income.get(month)!),
+      );
+    }
+    const monthlyBurn = totalOutflow.div(TRAILING_MONTHS);
+
+    let runwayMonths: string | null;
+    if (monthlyBurn.lte(0)) {
+      runwayMonths = null; // not burning down the buffer
+    } else if (buffer.lte(0)) {
+      runwayMonths = '0.0'; // already overdrawn — no runway, never a negative one
+    } else {
+      runwayMonths = buffer.div(monthlyBurn).toFixed(1);
+    }
+
+    return {
+      buffer: buffer.toFixed(2),
+      monthlyBurn: monthlyBurn.toFixed(2),
+      runwayMonths,
+    };
+  }
+
+  /**
+   * Spending leaks — a POINT-IN-TIME heuristic, not a monthly series, so (unlike
+   * the Slice A/B endpoints) it takes no ReportsRangeQueryDto.
+   *
+   * For each expense category, its MOST RECENT COMPLETE month's spend is compared
+   * with the average of the TRAILING_MONTHS complete months before that one. The
+   * in-progress current month is excluded from both sides. Spend comes from the
+   * single shared per-month per-category expense aggregation (so this can never
+   * disagree with monthly-expense-by-category or the adherence report), and is each
+   * category's DIRECT spend — a parent and its child are judged independently.
+   *
+   * A category is only considered when its trailing average is at least
+   * LEAK_MIN_BASELINE: a large percentage on a trivial baseline is noise, and a
+   * zero baseline cannot be divided. Consequently BRAND-NEW spend (no trailing
+   * history) is never a "leak" here — that is what the spending-over-time report is
+   * for. Flagged when the increase exceeds LEAK_GROWTH_THRESHOLD; biggest first.
+   * This is a heuristic, not advice.
+   */
+  async spendingLeaks(
+    userId: string,
+    now: Date = new Date(),
+  ): Promise<SpendingLeak[]> {
+    // current (partial, dropped) + latest complete + TRAILING_MONTHS before it.
+    const months = TRAILING_MONTHS + 2;
+    const [categories, directByMonth] = await Promise.all([
+      this.prisma.category.findMany({
+        where: { userId, kind: 'EXPENSE' },
+        select: { id: true, name: true },
+      }),
+      this.expenseByMonthAndCategory(userId, months, now),
+    ]);
+
+    const complete = completeMonthKeys(now, TRAILING_MONTHS + 1);
+    const currentMonth = complete[complete.length - 1]; // latest COMPLETE month
+    const baselineMonths = complete.slice(0, TRAILING_MONTHS);
+
+    const minBaseline = new Prisma.Decimal(LEAK_MIN_BASELINE);
+    const zero = new Prisma.Decimal(0);
+    const spendIn = (month: string, categoryId: string) =>
+      directByMonth.get(month)?.get(categoryId) ?? zero;
+
+    const leaks: Array<{ leak: SpendingLeak; pct: Prisma.Decimal }> = [];
+    for (const category of categories) {
+      const currentSpend = spendIn(currentMonth, category.id);
+
+      let trailingTotal = new Prisma.Decimal(0);
+      for (const month of baselineMonths) {
+        trailingTotal = trailingTotal.plus(spendIn(month, category.id));
+      }
+      const trailingAverage = trailingTotal.div(TRAILING_MONTHS);
+
+      // Guards the divide AND suppresses noise on trivial baselines.
+      if (trailingAverage.lt(minBaseline)) continue;
+
+      // The RAW ratio drives the threshold test and the sort; only the emitted
+      // value is scaled to a percentage (0.2501 → "25.0", not a rounded "0.3").
+      const pct = currentSpend.minus(trailingAverage).div(trailingAverage);
+      if (!pct.gt(LEAK_GROWTH_THRESHOLD)) continue;
+
+      leaks.push({
+        leak: {
+          categoryId: category.id,
+          categoryName: category.name,
+          currentSpend: currentSpend.toFixed(2),
+          trailingAverage: trailingAverage.toFixed(2),
+          pctIncrease: pct.times(100).toFixed(1),
+        },
+        pct,
+      });
+    }
+
+    // Sort on the exact Decimal, not the rounded string.
+    leaks.sort((a, b) => b.pct.comparedTo(a.pct));
+    return leaks.map((entry) => entry.leak);
+  }
+
+  /**
+   * month → summed INCOME and EXPENSE Decimals, dense/zero-filled. The SINGLE
+   * income/expense aggregation, shared by monthly-income-expense and the runway
+   * burn, so they can never disagree. Transfers and opening balances are excluded
+   * by the kind whitelist.
+   */
+  private async incomeExpenseByMonth(
+    userId: string,
+    months: number,
+    now: Date,
+  ): Promise<{
+    income: Map<string, Prisma.Decimal>;
+    expense: Map<string, Prisma.Decimal>;
+  }> {
+    const { gte, lte } = monthRange(now, months);
+    const rows = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        kind: { in: [TransactionKind.INCOME, TransactionKind.EXPENSE] },
+        date: { gte, lte },
+      },
+      select: { amount: true, date: true, kind: true },
+    });
+
+    const income = zeroFilledMonths(now, months);
+    const expense = zeroFilledMonths(now, months);
+    for (const r of rows) {
+      const key = monthKeyOf(r.date);
+      if (!income.has(key)) continue; // defensive: outside the dense range
+      if (r.kind === TransactionKind.INCOME) {
+        income.set(key, income.get(key)!.plus(r.amount));
+      } else {
+        expense.set(key, expense.get(key)!.plus(r.amount));
+      }
+    }
+    return { income, expense };
+  }
+
+  /**
    * month → categoryId → DIRECT expense sum over the range. The SINGLE spend
-   * aggregation shared by monthly-expense-by-category and monthly-budget-adherence,
-   * so both endpoints (and the dashboard chart built on the same basis) always
-   * agree. EXPENSE only — transfers, opening balances and income are excluded by
-   * the kind filter, exactly as the dashboard's spending-by-category does.
+   * aggregation shared by monthly-expense-by-category, monthly-budget-adherence and
+   * spending-leaks, so they always agree. EXPENSE only — transfers, opening balances
+   * and income are excluded by the kind filter, exactly as the dashboard's
+   * spending-by-category does.
    */
   private async expenseByMonthAndCategory(
     userId: string,
@@ -233,6 +433,15 @@ function monthKeys(now: Date, months: number): string[] {
     keys.push(monthKeyOf(new Date(Date.UTC(y, m - i, 1))));
   }
   return keys;
+}
+
+/**
+ * The last `count` COMPLETE calendar months, oldest → newest. The in-progress
+ * current month is deliberately excluded: it is partial, so including it would
+ * understate burn and distort a trailing average.
+ */
+function completeMonthKeys(now: Date, count: number): string[] {
+  return monthKeys(now, count + 1).slice(0, count);
 }
 
 function zeroFilledMonths(

@@ -7,6 +7,8 @@ import {
   MonthlyCategorySpending,
   MonthlyTotals,
   ReportsService,
+  Runway,
+  SpendingLeak,
 } from './reports.service';
 import { ReportsRangeQueryDto } from './dto/reports-range-query.dto';
 
@@ -51,5 +53,25 @@ export class ReportsController {
     @Query() query: ReportsRangeQueryDto,
   ): Promise<MonthlyAdherence[]> {
     return this.reportsService.monthlyBudgetAdherence(userId, query.months);
+  }
+
+  // Point-in-time snapshots — no range query, unlike the monthly series above.
+
+  @Get('runway')
+  @ApiOperation({
+    summary:
+      'Cash runway: liquid buffer, average monthly burn over the last 3 complete months, and months of runway (null when not burning)',
+  })
+  runway(@GetUser('id') userId: string): Promise<Runway> {
+    return this.reportsService.runway(userId);
+  }
+
+  @Get('spending-leaks')
+  @ApiOperation({
+    summary:
+      'Categories whose latest complete month exceeds their 3-month trailing average by >25% (heuristic; biggest first)',
+  })
+  spendingLeaks(@GetUser('id') userId: string): Promise<SpendingLeak[]> {
+    return this.reportsService.spendingLeaks(userId);
   }
 }
