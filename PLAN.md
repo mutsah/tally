@@ -314,10 +314,34 @@ code-review gate before every commit)
   - [x] Tests: cross-user isolation on all three delegates + a reverse B-only case, dense/zero-fill,
         flat `budgeted`, unbudgeted-category exclusion, transfer/opening exclusion, no double-count
         when parent AND child are budgeted, range validation. Verified live.
+- **Slice C — backend point-in-time reports ✓ (done 2026-07-08):**
+  - [x] `GET /reports/runway` — `{buffer, monthlyBurn, runwayMonths}`. NOT a monthly series: a
+        point-in-time snapshot, so it takes no range DTO. `buffer` = balance across non-valued,
+        non-archived accounts (INVESTMENT/MICROLOANS are illiquid snapshots, excluded), reusing
+        `AccountsService.findAll`'s grouped-balance path — no N+1, no second balance path.
+        `monthlyBurn` = average NET outflow (expense − income) over the trailing 3 COMPLETE months,
+        excluding the partial current month. `runwayMonths` = Decimal division, `null` when burn
+        ≤ 0 (not burning) and `"0.0"` when buffer ≤ 0 (already gone) — never negative, never a
+        divide-by-zero. Burn check precedes the buffer check; that ordering is pinned by a test.
+  - [x] `GET /reports/spending-leaks` — expense categories whose latest COMPLETE month exceeds
+        their trailing-3-complete-month average by >25%, biggest first. A 20.00 baseline floor
+        suppresses trivial-baseline spikes and makes the divide structurally impossible; brand-new
+        spend (no trailing history) is therefore never flagged. `pctIncrease` is emitted as a
+        percentage while the threshold and sort run on the raw ratio. Uses each category's DIRECT
+        spend (no rollup), so the leaking child is named rather than masked by its parent.
+        A heuristic, labelled as such — not advice.
+  - [x] Extracted the monthly income/expense aggregation into ONE shared private method (as Slice B
+        did for expense-by-category), so `monthly-income-expense` and the runway burn can never
+        disagree. Transfers/OPENING never counted in burn or leaks (they legitimately still move
+        `buffer`, which is a cash position, not a flow). Money stays Prisma.Decimal → string.
+  - [x] Tests: cross-user isolation both directions on every delegate (accounts, categories,
+        transactions), buffer excludes illiquid + archived, burn excludes the partial month and
+        transfers/opening, the null/"0.0"/divide branch ordering, the raw-ratio threshold boundary
+        (0.249 excluded, 0.251 flagged as "25.1"), sort order, empty result. Verified live.
+        Spec-census 16→17.
 - **Remaining Track 5 (pending):**
-  - [ ] Slice C — leak detection (fastest-growing categories vs trailing avg; recurring/
-        subscription heuristic; anomaly flags — heuristics, labeled as such) + net cash-flow /
-        naive run-rate.
+  - [ ] Slice C follow-ons NOT built: the recurring/subscription heuristic and anomaly flags from
+        the original leak-detection scope. Only the growth-vs-trailing-average heuristic shipped.
   - [ ] Reports FRONTEND — the Reports section/screen consuming Slice A/B/C aggregates
         (Savings-rate trend, Spending-over-time w/ drilldown, adherence-over-time, leak flags).
   - [ ] Net-worth-over-time: DEMOTED (valuations cut → no valued-account history). Optional
