@@ -17,7 +17,7 @@
 // When you ADD or REMOVE a spec file, update this ONE number to match. If it's
 // stale, `npm test` fails on the first run with a message telling you the new
 // count — so it can never drift silently.
-const EXPECTED_SPEC_COUNT = 15;
+const EXPECTED_SPEC_COUNT = 16;
 
 const fs = require('node:fs');
 const path = require('node:path');

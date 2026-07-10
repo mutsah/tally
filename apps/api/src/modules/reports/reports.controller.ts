@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { GetUser } from 'src/common/decorators/get-user.decorator';
 import {
+  MonthlyAdherence,
   MonthlyCategorySpending,
   MonthlyTotals,
   ReportsService,
@@ -38,5 +39,17 @@ export class ReportsController {
     @Query() query: ReportsRangeQueryDto,
   ): Promise<MonthlyCategorySpending[]> {
     return this.reportsService.monthlyExpenseByCategory(userId, query.months);
+  }
+
+  @Get('monthly-budget-adherence')
+  @ApiOperation({
+    summary:
+      'Monthly budgeted-vs-spent over a trailing range (dense; budgeted is the current limits, flat across months)',
+  })
+  monthlyBudgetAdherence(
+    @GetUser('id') userId: string,
+    @Query() query: ReportsRangeQueryDto,
+  ): Promise<MonthlyAdherence[]> {
+    return this.reportsService.monthlyBudgetAdherence(userId, query.months);
   }
 }

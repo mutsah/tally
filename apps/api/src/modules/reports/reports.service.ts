@@ -25,6 +25,12 @@ export interface MonthlyCategorySpending {
   categories: CategoryRollup[];
 }
 
+export interface MonthlyAdherence {
+  month: string;
+  budgeted: string; // Σ of the user's CURRENT limits — constant across the series
+  spent: string; // that month's expense in budgeted categories
+}
+
 @Injectable()
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -91,32 +97,13 @@ export class ReportsService {
     months: number = DEFAULT_MONTHS,
     now: Date = new Date(),
   ): Promise<MonthlyCategorySpending[]> {
-    const { gte, lte } = monthRange(now, months);
-    const [categories, rows] = await Promise.all([
+    const [categories, directByMonth] = await Promise.all([
       this.prisma.category.findMany({
         where: { userId, kind: 'EXPENSE' },
         select: { id: true, name: true, parentId: true },
       }),
-      this.prisma.transaction.findMany({
-        where: { userId, kind: TransactionKind.EXPENSE, date: { gte, lte } },
-        select: { amount: true, date: true, categoryId: true },
-      }),
+      this.expenseByMonthAndCategory(userId, months, now),
     ]);
-
-    // month → categoryId → direct Decimal sum
-    const directByMonth = new Map<string, Map<string, Prisma.Decimal>>();
-    for (const month of monthKeys(now, months)) {
-      directByMonth.set(month, new Map());
-    }
-    for (const r of rows) {
-      if (!r.categoryId) continue;
-      const bucket = directByMonth.get(monthKeyOf(r.date));
-      if (!bucket) continue;
-      bucket.set(
-        r.categoryId,
-        (bucket.get(r.categoryId) ?? new Prisma.Decimal(0)).plus(r.amount),
-      );
-    }
 
     const childrenByParent = new Map<
       string,
@@ -134,6 +121,100 @@ export class ReportsService {
     return monthKeys(now, months).map((month) =>
       rollupMonth(month, directByMonth.get(month)!, parents, childrenByParent),
     );
+  }
+
+  /**
+   * Dense monthly budget adherence: `budgeted` vs `spent` per month.
+   *
+   * `budgeted` is the sum of the user's CURRENT per-category limits. Budgets
+   * carry no per-month history, so the current limits apply uniformly across the
+   * whole range — an intentional FLAT reference line, not a reconstruction of
+   * what the limits were in past months.
+   *
+   * `spent` is that month's EXPENSE in budgeted categories. It reuses the very
+   * same per-month per-category spend basis that backs monthly-expense-by-category
+   * (and therefore the Track 4 dashboard chart), so the three can never disagree.
+   * Each expense is counted at most once, attributed to the nearest budgeted
+   * category — itself if it has a budget, else its parent if the parent has one
+   * (a parent's budget covers its unbudgeted children, matching the rollup
+   * semantics of spending-by-category). Expenses in categories with no budget
+   * anywhere up the chain are excluded. TRANSFER/OPENING never count (EXPENSE-only
+   * kind filter).
+   */
+  async monthlyBudgetAdherence(
+    userId: string,
+    months: number = DEFAULT_MONTHS,
+    now: Date = new Date(),
+  ): Promise<MonthlyAdherence[]> {
+    const [budgets, categories, directByMonth] = await Promise.all([
+      this.prisma.budget.findMany({
+        where: { userId },
+        select: { categoryId: true, amount: true },
+      }),
+      this.prisma.category.findMany({
+        where: { userId, kind: 'EXPENSE' },
+        select: { id: true, parentId: true },
+      }),
+      this.expenseByMonthAndCategory(userId, months, now),
+    ]);
+
+    // Constant across every month — see the JSDoc note above.
+    let budgetedTotal = new Prisma.Decimal(0);
+    for (const b of budgets) budgetedTotal = budgetedTotal.plus(b.amount);
+    const budgeted = budgetedTotal.toFixed(2);
+
+    const budgetedIds = new Set(budgets.map((b) => b.categoryId));
+    const parentOf = new Map(categories.map((c) => [c.id, c.parentId]));
+
+    /** True when this category's spend rolls up to some budget (self or parent). */
+    const isCovered = (categoryId: string): boolean => {
+      if (budgetedIds.has(categoryId)) return true;
+      const parent = parentOf.get(categoryId) ?? null;
+      return parent !== null && budgetedIds.has(parent);
+    };
+
+    return monthKeys(now, months).map((month) => {
+      const direct = directByMonth.get(month)!;
+      let spent = new Prisma.Decimal(0);
+      for (const [categoryId, amount] of direct) {
+        if (isCovered(categoryId)) spent = spent.plus(amount);
+      }
+      return { month, budgeted, spent: spent.toFixed(2) };
+    });
+  }
+
+  /**
+   * month → categoryId → DIRECT expense sum over the range. The SINGLE spend
+   * aggregation shared by monthly-expense-by-category and monthly-budget-adherence,
+   * so both endpoints (and the dashboard chart built on the same basis) always
+   * agree. EXPENSE only — transfers, opening balances and income are excluded by
+   * the kind filter, exactly as the dashboard's spending-by-category does.
+   */
+  private async expenseByMonthAndCategory(
+    userId: string,
+    months: number,
+    now: Date,
+  ): Promise<Map<string, Map<string, Prisma.Decimal>>> {
+    const { gte, lte } = monthRange(now, months);
+    const rows = await this.prisma.transaction.findMany({
+      where: { userId, kind: TransactionKind.EXPENSE, date: { gte, lte } },
+      select: { amount: true, date: true, categoryId: true },
+    });
+
+    const directByMonth = new Map<string, Map<string, Prisma.Decimal>>();
+    for (const month of monthKeys(now, months)) {
+      directByMonth.set(month, new Map());
+    }
+    for (const r of rows) {
+      if (!r.categoryId) continue;
+      const bucket = directByMonth.get(monthKeyOf(r.date));
+      if (!bucket) continue;
+      bucket.set(
+        r.categoryId,
+        (bucket.get(r.categoryId) ?? new Prisma.Decimal(0)).plus(r.amount),
+      );
+    }
+    return directByMonth;
   }
 }
 
@@ -154,7 +235,10 @@ function monthKeys(now: Date, months: number): string[] {
   return keys;
 }
 
-function zeroFilledMonths(now: Date, months: number): Map<string, Prisma.Decimal> {
+function zeroFilledMonths(
+  now: Date,
+  months: number,
+): Map<string, Prisma.Decimal> {
   const map = new Map<string, Prisma.Decimal>();
   for (const key of monthKeys(now, months)) map.set(key, new Prisma.Decimal(0));
   return map;
@@ -192,7 +276,9 @@ function rollupMonth(
   });
   for (const r of rollups) grand = grand.plus(r.totalDec);
 
-  const byTotalThenName = <T extends { totalDec: Prisma.Decimal; name: string }>(
+  const byTotalThenName = <
+    T extends { totalDec: Prisma.Decimal; name: string },
+  >(
     a: T,
     b: T,
   ) => b.totalDec.comparedTo(a.totalDec) || a.name.localeCompare(b.name);
