@@ -288,15 +288,27 @@ code-review gate before every commit)
       flow (`valuation-form.tsx`/`recordValuation`, Accounts screen) and `balanceFor` — untouched.
 - [x] Depended on Track 3 — budgets exist, so the chart has data to plot.
 
-### Track 5 — Analytics / Reports (deep reports)
-- [ ] Additive Reports section (the F5 summary dashboard stays as-is); gets its own scoping pass
-      before build
-- [ ] MVP report set:
-  - [ ] Spending-by-category over time (month-over-month + drilldown)
-  - [ ] Savings-rate trend + net cash flow per period
-  - [ ] Leak detection (fastest-growing categories vs trailing avg; recurring/subscription
-        heuristic; anomaly flags) — heuristics, labeled as such
-  - [ ] Budget-adherence over time (now possible once Track 3 lands)
+### Track 5 — Analytics / Reports (deep reports) — building in slices
+- [ ] Additive Reports section (the F5 summary dashboard stays as-is). Backend lives in a NEW
+      `modules/reports/` module mirroring the dashboard aggregate conventions (guard, `@GetUser`,
+      explicit `where: { userId }`, Decimal→string). Transfers + OPENING excluded via the same
+      kind whitelist the dashboard uses.
+- **Slice A — backend monthly time-series ✓ (done 2026-07-08):**
+  - [x] `GET /reports/monthly-income-expense?months=` — dense monthly income/expense/net (UTC
+        calendar months, zero-filled, default 12, cap 60). Serves Savings-rate-trend + Spending-
+        over-time's total line. `net` via Decimal arithmetic (may be negative); money as strings.
+  - [x] `GET /reports/monthly-expense-by-category?months=` — dense monthly expense with parent
+        rollups (own + children), matching `spending-by-category`. Serves the category breakdown/
+        drilldown. Full tests incl. cross-user isolation, transfer/opening exclusion, dense/zero-
+        fill, negative net, money-as-string; verified live.
+- **Remaining Track 5 (pending):**
+  - [ ] Slice B — budget-adherence-over-time (monthly spent-vs-budget per category; builds on
+        Slice A + Track 3 budgets).
+  - [ ] Slice C — leak detection (fastest-growing categories vs trailing avg; recurring/
+        subscription heuristic; anomaly flags — heuristics, labeled as such) + net cash-flow /
+        naive run-rate.
+  - [ ] Reports FRONTEND — the Reports section/screen consuming Slice A/B/C aggregates
+        (Savings-rate trend, Spending-over-time w/ drilldown, adherence-over-time, leak flags).
   - [ ] Net-worth-over-time: DEMOTED (valuations cut → no valued-account history). Optional
         cash/bank-only version if wanted.
 - [ ] Boundaries (data not collected): true investment returns/XIRR (needs cut v3), merchant
